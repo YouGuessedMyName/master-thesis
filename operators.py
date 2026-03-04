@@ -1,5 +1,5 @@
 from typing import Callable
-from helpers import MDP, Frac, LowerSet, str_list
+from helpers import MDP, Frac, LowerSet, str_list, argmax
 
 def PhiPolicy(policy: Callable, F: list[float], M: MDP):
     return [
@@ -15,6 +15,16 @@ def Phi(F: list[float], M: MDP):
         1 if s in M.B else
             max([Frac(sum(M.P(s,a,s_) * F[s_] for s_ in M.S)).limit_denominator(1000) 
                 for a in M.av(s)])
+        for s in M.S
+    ]
+
+def PhiPolicyArgMax(F: list[Frac], M: MDP):
+    """Return the policy that maximizes Phi."""
+    if len(F) == 0:
+        return []
+    return [
+            argmax([Frac(sum(M.P(s,a,s_) * F[s_] for s_ in M.S))
+                for a in M.av(s)], M.av(s))
         for s in M.S
     ]
 
@@ -36,10 +46,14 @@ def PhiPolicy(policy: list[str], F: list[float], M: MDP):
 
 def PsiPolicyEq(policy: list[str], row, r, M: MDP):
     next_step = NextStepPolicy(policy, row, M)
+    #print("next step", str_list(next_step))
+    # Now account for Phi setting bad states to 1
     deduct = 0
     for s in M.B:
-        deduct += row[s]
-        next_step[s] -= deduct
+        #print(s)
+        deduct += next_step[s]
+        next_step[s] = 0
+    # print("r", r, "deduct", deduct)
     return next_step, r - deduct
         
 
@@ -60,5 +74,5 @@ def downarrow(p):
     for i, entry in enumerate(p):
         if i != 0:
             assert entry == 1
-    return LowerSet([([1] + [0 for _ in range(len(p)-1)], p[0])])
+    return LowerSet([([1 / Frac(p[0]).limit_denominator(1000)] + [0 for _ in range(len(p)-1)], Frac(1))])
 
