@@ -19,7 +19,10 @@ def assert_invariants(F, G, k, n, M: MDP):
         assert M.PROP in G[len(G)-1] # N1
 
         for i in range(len(G)-1): # N2
-            assert Psi(G[i+1]) <= G[i]
+            # print("Comparing:")
+            # print("Psi:", Psi(G[i+1], M))
+            # print("G", G[i])
+            assert Psi(G[i+1], M) <= G[i]
     
         for j in range(len(F)-1): # PN
             if 0 <= j - k < len(G):
@@ -81,12 +84,12 @@ def adjointPDRdown(M: MDP):
         #     print("second", Phi(F[k-1], M) in Gk)
         # Unfold
         if len(G) == 0 and vector_leq(F[n-1], M.PROP):
-            print(f"Fn-1{str_list(F[n-1])} <= PROP ==> unfold")
+            print(f"Fn-1 {str_list(F[n-1])} <= PROP ==> unfold")
             F.append([1 for _ in M.S])
 
         # Candidate
         elif len(G) == 0 and not vector_leq(F[n-1], M.PROP):
-            print(f"Fn-1{str_list(F[n-1])} > PROP ==> candidate")
+            print(f"Fn-1 {str_list(F[n-1])} > PROP ==> candidate")
             ZZ = candidate_heuristic(M.PROP)
             G = [ZZ]
         
@@ -100,7 +103,8 @@ def adjointPDRdown(M: MDP):
             ZZ = decide_heuristic(F[k-1], Gk, M)
             print("ZZ", ZZ)
             assert F[k-1] not in ZZ
-            # I don't know how to implement the other assert...
+            assert Psi(Gk, M) <= ZZ
+
             G.insert(0, ZZ)
 
         # Conflict
@@ -160,5 +164,5 @@ def delta(s):
 def labels(s):
     return ["bad"] if s in {4,5} else []
 model = sv.bird.build_bird(delta, init=0, labels=labels, modeltype=sv.ModelType.DTMC)
-problem = from_stormvogel_problem(model, lambda_=Frac(0.7), bad_label="bad")
+problem = from_stormvogel_problem(model, lambda_=Frac(0.4), bad_label="bad")
 testAdjointPDRdown(problem)

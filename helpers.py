@@ -60,31 +60,39 @@ class LowerSet:
         return True
 
     def __add__(one, two):
+        if one == []:
+            return two
+        if two == []:
+            return one
         return LowerSet(dedup(one.eqs + two.eqs))
 
     def __len__(self):
         return len(self.eqs)
 
     def __str__(self):
+        if len(self.eqs) == 0:
+            return "{ v : True }" 
         res = "{ "
         for row, r in self.eqs:
-            res += str_list(row) + " <= " + str(r) + "; "
+            res += "v : " + str_list(row) + " * v <= " + str(r) + "; "
         return res + "}"
     
     def __le__(self, other):
-        assert len(self) == len(other) == 1
-        srow, sr = self.eqs[0]
-        otrow, otr = other.eqs[0]
-        vars_ = [Real(f"x_{i}") for i in range(len(srow))]
+        vars_ = [Real(f"x_{i}") for i in range(len(self.eqs[0][0]))]
         s = Solver()
         for x in vars_:
             s.add(x >= 0)
             s.add(x <= 1)
-        s.add(Sum([srow[i] * vars_[i] for i in range(len(vars_)) if srow[i] != 0]) <= sr) # A point contained in self
-        s.add(Sum([otrow[i] * vars_[i] for i in range(len(vars_)) if otrow[i] != 0]) > otr) # That is *not* contained in other
-        #print(s)
+        for i in range(len(self)):
+            for j in range(len(other)):
+                srow, sr = self.eqs[i]
+                otrow, otr = other.eqs[j]
+                
+                s.add(Sum([srow[i] * vars_[i] for i in range(len(vars_)) if srow[i] != 0]) <= sr) # A point contained in self
+                s.add(Sum([otrow[i] * vars_[i] for i in range(len(vars_)) if otrow[i] != 0]) > otr) # That is *not* contained in other
+            #print(s)
         if s.check() == sat:
-            #print("Not contained, take the point:", s.model())
+            print("Not contained, take the point:", s.model())
             return False
         return True
 
