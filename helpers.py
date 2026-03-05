@@ -100,8 +100,9 @@ class LowerSet:
 def meet(l: list[list[float]]):
     if len(l) == 0:
         return []
+    lowest = l[0]
     for li in l:
-        lowest = [min(x,y) for x, y in zip(li, l[0])]
+        lowest = [min(x,y) for x, y in zip(li, lowest)]
     return lowest
 
 def dedup(l):

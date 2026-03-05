@@ -3,7 +3,16 @@ from copy import deepcopy
 from examples import *
 
 
-def assert_invariants(F, G, k, n, M: MDP):
+def assert_invariants(F, G, k, n, M: MDP, F_meet_conjuncts):
+    # The meet conjuncts are correct
+    for j in range (len(F)-1):
+        # print("j", j)
+        # print("Fj", str_list(F[j]))
+        # print("conjuncts")
+        # for conj in F_meet_conjuncts[j]:
+        #     print(str_list(conj))
+        assert meet(F_meet_conjuncts[j]) == F[j]
+
     assert len(F[0]) == 0 # I0
     assert 1 <= k and k <= n
     for j in range(len(F)-1):
@@ -57,9 +66,19 @@ def print_progress(iteration, F, G, k, n, M):
         print("F_k-1", str_list(F[k-1]))
         #print("Phi(F_k-1)", str_list(Phi(F[k-1], M)))
 
+def propagate(F, F_meet_conjuncts, M):
+    for i in range(len(F)-2):
+        for j in range(len(F_meet_conjuncts[i])):
+            F_j_prime = F_meet_conjuncts[i][j]
+            if len(F_j_prime) != 0:
+                if vector_leq(Phi(F[i], M), F_j_prime):
+                    F[i+1] = meet([F[i+1], F_j_prime])
+    # We don't need to return, F is modified by reference.
+
 def adjointPDRdown(M: MDP):
     states_so_far = []
     F = [[], [Frac(0) for _ in M.S], [Frac(1) for _ in M.S]]
+    F_meet_conjuncts = [[[]], [[Frac(0) for _ in M.S]], [[Frac(1) for _ in M.S]]]
     G = []
     n = k = 3
     iteration = 0
@@ -78,7 +97,7 @@ def adjointPDRdown(M: MDP):
         Gk = G[0] if len(G) > 0 else None # index issues
         print_progress(iteration, F, G, k, n, M)
 
-        assert_invariants(F, G, k, n, M)
+        assert_invariants(F, G, k, n, M, F_meet_conjuncts)
 
         iteration += 1
         
@@ -100,6 +119,17 @@ def adjointPDRdown(M: MDP):
         if len(G) == 0 and vector_leq(F[n-1], M.PROP):
             print(f"Fn-1 {str_list(F[n-1])} <= PROP ==> unfold")
             F.append([1 for _ in M.S])
+            F_meet_conjuncts.append([[1 for _ in M.S]])
+
+            # PROPAGATE
+            old_F = [[deepcopy(y) for y in x] for x in F]
+            propagate(F, F_meet_conjuncts, M)
+            if F != old_F:
+                print("Old situation:")
+                [print(f"F{i}", str_list(Fi)) for i, Fi in enumerate(old_F)]
+                print("Propagate did something!")
+                assert False # Just to warn me
+                print()
 
         # Candidate
         elif len(G) == 0 and not vector_leq(F[n-1], M.PROP):
@@ -116,6 +146,7 @@ def adjointPDRdown(M: MDP):
             
             ZZ = decide_heuristic(F[k-1], Gk, M)
             print("ZZ", ZZ)
+            print("Psi", Psi(Gk, M))
             assert F[k-1] not in ZZ
             assert Psi(Gk, M) <= ZZ
 
@@ -126,17 +157,17 @@ def adjointPDRdown(M: MDP):
             print(f"Phi(F_k-1) {str_list(Phi(F[k-1], M))} IN Gk {Gk} ==> conflict")
             # print("PHI: ", Phi(F[k-1]))
             # print('Gk: ', Gk)
-            # zs = conflict_heuristic_simple(F[k-1], Gk, M)
+            zs = conflict_heuristic_simple(F[k-1], Gk, M)
             # print("zs:", str_list(zs))
-            zb = conflict_heuristic_zb(F[k-1], Gk, M)
-            print("zb:", str_list(zb))
+            # zb = conflict_heuristic_zb(F[k-1], Gk, M)
+            # print("zb:", str_list(zb))
             # z01 = conflict_heuristic_01(F[k-1], Gk, M)
             # print("z01:", str_list(z01))
             # zbad = conflict_heuristic_01_bad(F[k-1], Gk, M)
             # print("zbad:", str_list(zbad))
-            # zopt = conflict_heuristic_opt(F[k-1], Gk, M)
-            # print("zopt", str_list(zopt))
-            z = zb
+            zopt = conflict_heuristic_opt(F[k-1], Gk, M)
+            print("zopt", str_list(zopt))
+            z = zopt
             # print("Phi(z)", str_list(Phi(z, M)))
             # if vector_leq(Phi(z, M), z) and vector_leq(z, M.PROP):
             #     print("z was perfect.")
@@ -145,6 +176,7 @@ def adjointPDRdown(M: MDP):
             assert vector_leq(Phi(meet([F[k-1], z]), M), z)
             
             F = [meet([Fj, z]) for (j, Fj) in enumerate(F) if j <= k] + [F[j] for j in range(k+1, n)]
+            F_meet_conjuncts = [Fj_conjuncts + [z] for (j, Fj_conjuncts) in enumerate(F_meet_conjuncts) if j <= k] + [F_meet_conjuncts[j] for j in range(k+1, n)]
             G.pop(0)
         else:
             print("OOPS")
@@ -155,28 +187,15 @@ def testAdjointPDRdown(M: MDP):
     assert res is not None
     LAMBDA = M.PROP[0].limit_denominator(1000)
     
-    if LAMBDA >= M.EXPECTED_RESULT:
+    if LAMBDA >= Frac(M.EXPECTED_RESULT).limit_denominator(1000):
         assert res
         print(f"lambda ({LAMBDA}) >= expected result ({M.EXPECTED_RESULT}). res: {res}, correct.")
     else:
         assert not res
         print(f"lambda ({LAMBDA}) < expected result ({M.EXPECTED_RESULT}). res: {res}, correct.")
 
-testAdjointPDRdown(example_21())
-# testAdjointPDRdown(example_23())
-# testAdjointPDRdown(study(1/2))    
-# testAdjointPDRdown(study(1/2))
-# testAdjointPDRdown(die(1/6))
-DELTA = {
-    0: [(.5, 1), (.5, 2)],
-    1: [(.5, 3), (.5, 6)],
-    2: [(.5, 3), (.5, 4)],
-    3: [(.5, 5), (.5, 7)],
-}
-def delta(s):
-    return DELTA[s] if s in DELTA else [(1,s)]
-def labels(s):
-    return ["bad"] if s in {4,5} else []
-model = sv.bird.build_bird(delta, init=0, labels=labels, modeltype=sv.ModelType.DTMC)
-problem = from_stormvogel_problem(model, lambda_=Frac(0.4), bad_label="bad")
-# testAdjointPDRdown(problem)
+#testAdjointPDRdown(example_21())
+#testAdjointPDRdown(example_23())
+#testAdjointPDRdown(study(5/10))    
+#testAdjointPDRdown(die(0.5))
+testAdjointPDRdown(grid())

@@ -13,6 +13,7 @@ def decide_heuristic(F_k_minus_1, Gk, M:MDP):
     #         return PsiPolicy(policy, Gk, M)
     # return set()
     policy = PhiPolicyArgMax(F_k_minus_1, M)
+    print(policy)
     #print("policy", policy)
     if PhiPolicy(policy, F_k_minus_1, M) not in Gk:
         return PsiPolicy(policy, Gk, M)

@@ -170,3 +170,31 @@ def study(lambda_):
 
 def die(lambda_=1/6):
     return from_stormvogel_problem(create_die_dtmc(), lambda_, "r6")
+
+def grid(lambda_=1/2):
+    DELTA = {
+        0: [(.5, 1), (.5, 2)],
+        1: [(.5, 3), (.5, 6)],
+        2: [(.5, 3), (.5, 4)],
+        3: [(.5, 5), (.5, 7)],
+    }
+    def delta(s):
+        return DELTA[s] if s in DELTA else [(1,s)]
+    def labels(s):
+        return ["bad"] if s in {4,5} else []
+    model = sv.bird.build_bird(delta, init=0, labels=labels, modeltype=sv.ModelType.DTMC)
+    problem = from_stormvogel_problem(model, lambda_=lambda_, bad_label="bad")
+    return problem
+
+def problematic(lambda_):
+    DELTA = {
+        0: [(1, 1)],
+        1: [(0.3, 0), (0.3, 2), (0.4, 3)],
+        2 : [(1,2)],
+        3 : [(1,3)]
+    }
+    delta = lambda s : DELTA[s]
+    labels = lambda s : ["bad"] if s == 2 else []
+    model = sv.bird.build_bird(delta, init=0, labels=labels, modeltype=sv.ModelType.DTMC)
+    problem = from_stormvogel_problem(model, lambda_=lambda_, bad_label="bad")
+    return problem

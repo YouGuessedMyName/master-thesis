@@ -67,7 +67,13 @@ def PsiPolicy(policy: Callable, G: LowerSet, M):
 def Psi(G: LowerSet, M):
     res = LowerSet([])
     for policy in M.possible_policies():
-        res += PsiPolicy(policy, G, M)
+        psipol = PsiPolicy(policy, G, M)
+        if psipol == []:
+            return []
+        res += psipol
+        # print("plc", policy)
+        # print("Psi", PsiPolicy(policy, G, M))
+        # print(res)
     if len(res.eqs) == 0:
         return []
     return res
