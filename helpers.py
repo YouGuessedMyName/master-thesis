@@ -125,4 +125,7 @@ def argmax(results, args):
     #print("args", args)
     return args[npargmax(results)]
 
+def apply(f, n, arg, M):
+    return arg if n <= 0 else f(apply(f, n-1, arg, M), M)
+
 # print(LowerSet([([0,0], 1)]) <= LowerSet([([2,0], 1)]))

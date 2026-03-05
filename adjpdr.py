@@ -29,7 +29,21 @@ def assert_invariants(F, G, k, n, M: MDP):
                 Gj = G[j - k]
                 assert F[j] not in Gj
 
-    # TODO
+    
+    for j in range(len(F)-1):
+        # A1a
+        assert vector_leq(apply(Phi, j, [], M), F[j])
+        
+        if j >= 1:
+            # A1b (F is an overapproximation of the positive chain.)
+            assert F[j] in apply(Psi, n-1-j, downarrow([1 for _ in range(len(F[j]))]), M)
+
+            # TODO A2 and A3, should refactor LowerSet first.
+            
+            # A3 (G is an overapproximation of the negative chain.)
+            if 0 <= j - k < len(G):
+                Gj = G[j - k]
+                assert apply(Psi, n-1-j, downarrow(M.PROP), M) <= Gj
 
 def print_progress(iteration, F, G, k, n, M):
     print(f"\n{iteration}")
@@ -148,7 +162,7 @@ def testAdjointPDRdown(M: MDP):
         assert not res
         print(f"lambda ({LAMBDA}) < expected result ({M.EXPECTED_RESULT}). res: {res}, correct.")
 
-# testAdjointPDRdown(example_23())
+testAdjointPDRdown(example_21())
 # testAdjointPDRdown(example_23())
 # testAdjointPDRdown(study(1/2))    
 # testAdjointPDRdown(study(1/2))
@@ -165,4 +179,4 @@ def labels(s):
     return ["bad"] if s in {4,5} else []
 model = sv.bird.build_bird(delta, init=0, labels=labels, modeltype=sv.ModelType.DTMC)
 problem = from_stormvogel_problem(model, lambda_=Frac(0.4), bad_label="bad")
-testAdjointPDRdown(problem)
+# testAdjointPDRdown(problem)
