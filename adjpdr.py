@@ -145,6 +145,7 @@ def adjointPDRdown(M: MDP):
 
             
             ZZ = decide_heuristic(F[k-1], Gk, M)
+            #ZZ = Psi(Gk, M)
             print("ZZ", ZZ)
             print("Psi", Psi(Gk, M))
             assert F[k-1] not in ZZ
@@ -158,16 +159,16 @@ def adjointPDRdown(M: MDP):
             # print("PHI: ", Phi(F[k-1]))
             # print('Gk: ', Gk)
             zs = conflict_heuristic_simple(F[k-1], Gk, M)
-            # print("zs:", str_list(zs))
-            # zb = conflict_heuristic_zb(F[k-1], Gk, M)
-            # print("zb:", str_list(zb))
+            print("zs:", str_list(zs))
+            zb = conflict_heuristic_zb(F[k-1], Gk, M)
+            print("zb:", str_list(zb))
             # z01 = conflict_heuristic_01(F[k-1], Gk, M)
             # print("z01:", str_list(z01))
             # zbad = conflict_heuristic_01_bad(F[k-1], Gk, M)
             # print("zbad:", str_list(zbad))
-            zopt = conflict_heuristic_opt(F[k-1], Gk, M)
-            print("zopt", str_list(zopt))
-            z = zopt
+            # zopt = conflict_heuristic_opt(F[k-1], Gk, M)
+            # print("zopt", str_list(zopt))
+            z = zb
             # print("Phi(z)", str_list(Phi(z, M)))
             # if vector_leq(Phi(z, M), z) and vector_leq(z, M.PROP):
             #     print("z was perfect.")
@@ -194,8 +195,8 @@ def testAdjointPDRdown(M: MDP):
         assert not res
         print(f"lambda ({LAMBDA}) < expected result ({M.EXPECTED_RESULT}). res: {res}, correct.")
 
-#testAdjointPDRdown(example_21())
+testAdjointPDRdown(example_21())
 #testAdjointPDRdown(example_23())
 #testAdjointPDRdown(study(5/10))    
-#testAdjointPDRdown(die(0.5))
-testAdjointPDRdown(grid())
+#testAdjointPDRdown(die(0.17))
+#testAdjointPDRdown(grid(0.4))

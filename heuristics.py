@@ -17,6 +17,7 @@ def decide_heuristic(F_k_minus_1, Gk, M:MDP):
     #print("policy", policy)
     if PhiPolicy(policy, F_k_minus_1, M) not in Gk:
         return PsiPolicy(policy, Gk, M)
+    assert False
     return []
 
 def generate_zk(F_k_minus_1, Gk, M):
