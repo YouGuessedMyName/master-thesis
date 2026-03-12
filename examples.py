@@ -198,3 +198,14 @@ def problematic(lambda_):
     model = sv.bird.build_bird(delta, init=0, labels=labels, modeltype=sv.ModelType.DTMC)
     problem = from_stormvogel_problem(model, lambda_=lambda_, bad_label="bad")
     return problem
+
+def two_d(lambda_):
+    DELTA = {
+        0: [(1, 1)],
+        1: [(1, 1)],
+    }
+    delta = lambda s : DELTA[s]
+    labels = lambda s : ["bad"] if s == 1 else []
+    model = sv.bird.build_bird(delta, init=0, labels=labels, modeltype=sv.ModelType.DTMC)
+    problem = from_stormvogel_problem(model, lambda_=lambda_, bad_label="bad")
+    return problem

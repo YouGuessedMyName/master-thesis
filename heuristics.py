@@ -13,7 +13,7 @@ def decide_heuristic(F_k_minus_1, Gk, M:MDP):
     #         return PsiPolicy(policy, Gk, M)
     # return set()
     policy = PhiPolicyArgMax(F_k_minus_1, M)
-    print(policy)
+    #print(policy)
     #print("policy", policy)
     if PhiPolicy(policy, F_k_minus_1, M) not in Gk:
         return PsiPolicy(policy, Gk, M)
@@ -27,20 +27,30 @@ def generate_zk(F_k_minus_1, Gk, M):
     assert len(Gk) == 1
     row, r = Gk.eqs[0]
 
-    constraints_geq_0 = [([0] + [1 if v == w else 0 for w in range(L)]) for v in range(L) if row[v] == 0] # ???
-    #constraints_geq_0 = [([0] + [1 if v == w else 0 for w in range(L)]) for v in range(L)] # ???
-    constraints_leq_1 = [([1] + [-1 if v == w else 0 for w in range(L)]) for v in range(L)]
+    # OLD, BUT DONT DE-LETE YET
+    # constraints_geq_0 = [([0] + [1 if v == w else 0 for w in range(L)]) for v in range(L) if row[v] == 0] # ???
+    # # constraints_geq_0 = [([0] + [1 if v == w else 0 for w in range(L)]) for v in range(L)] # ???
+    # constraints_leq_1 = [([1] + [-1 if v == w else 0 for w in range(L)]) for v in range(L)]
+    # #constraints_geq_0 = constraints_leq_1 = []
+    # constraints_eqs = [[r] + [-x for x in row]]
+
+    # NEW
+    constraints_leq_1 = [([1] + [-1 if v == w else 0 for w in range(L)]) for v in range(L) if row[v] == 0]
+    constraints_geq_0 = []
     constraints_eqs = [[r] + [-x for x in row]]
+
     mat = cdd.matrix_from_array(constraints_geq_0 + constraints_leq_1 + constraints_eqs)
     # print(mat)
     mat.rep_type = cdd.RepType.INEQUALITY
     poly = cdd.polyhedron_from_matrix(mat)
     generators_raw = cdd.copy_generators(poly).array
-    # print(f"Gens raw: {generators_raw}")
-    generators = [[Frac(x).limit_denominator(1000) for x in d[1:]] for d in generators_raw]
-    #print(f"Gens: {generators}")
-    #print(f"Phi(F_k_minus) {Phi(F_k_minus_1)}")
+    print(f"Gens raw: {generators_raw}")
+    # print("d[0]", [d[0] for d in generators_raw])
+    generators = [[Frac(x).limit_denominator(1000) for x in d[1:]] for d in generators_raw if d[0] == 1]
+    print(f"Gens:", [str_list(g) for g in generators])
+    print(f"Phi(F_k_minus) {str_list(Phi(F_k_minus_1, M))}")
     Zk = [d for d in generators if vector_leq(Phi(F_k_minus_1, M), d)]
+    print("Zk", [str_list(g) for g in Zk])
     return Zk
 
 def conflict_heuristic_simple(F_k_minus_1, Gk, M):

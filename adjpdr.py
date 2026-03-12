@@ -11,6 +11,9 @@ def assert_invariants(F, G, k, n, M: MDP, F_meet_conjuncts):
         # print("conjuncts")
         # for conj in F_meet_conjuncts[j]:
         #     print(str_list(conj))
+        if not meet(F_meet_conjuncts[j]) == F[j]:
+            print("conj", F_meet_conjuncts[j])
+            print(F[j])
         assert meet(F_meet_conjuncts[j]) == F[j]
 
     assert len(F[0]) == 0 # I0
@@ -73,6 +76,7 @@ def propagate(F, F_meet_conjuncts, M):
             if len(F_j_prime) != 0:
                 if vector_leq(Phi(F[i], M), F_j_prime):
                     F[i+1] = meet([F[i+1], F_j_prime])
+                    F_meet_conjuncts[i+1].append(F_j_prime)
     # We don't need to return, F is modified by reference.
 
 def adjointPDRdown(M: MDP):
@@ -128,7 +132,7 @@ def adjointPDRdown(M: MDP):
                 print("Old situation:")
                 [print(f"F{i}", str_list(Fi)) for i, Fi in enumerate(old_F)]
                 print("Propagate did something!")
-                assert False # Just to warn me
+                #assert False # Just to warn me
                 print()
 
         # Candidate
@@ -162,13 +166,13 @@ def adjointPDRdown(M: MDP):
             print("zs:", str_list(zs))
             zb = conflict_heuristic_zb(F[k-1], Gk, M)
             print("zb:", str_list(zb))
-            # z01 = conflict_heuristic_01(F[k-1], Gk, M)
-            # print("z01:", str_list(z01))
+            z01 = conflict_heuristic_01(F[k-1], Gk, M)
+            print("z01:", str_list(z01))
             # zbad = conflict_heuristic_01_bad(F[k-1], Gk, M)
             # print("zbad:", str_list(zbad))
             # zopt = conflict_heuristic_opt(F[k-1], Gk, M)
             # print("zopt", str_list(zopt))
-            z = zb
+            z = z01
             # print("Phi(z)", str_list(Phi(z, M)))
             # if vector_leq(Phi(z, M), z) and vector_leq(z, M.PROP):
             #     print("z was perfect.")
@@ -195,8 +199,9 @@ def testAdjointPDRdown(M: MDP):
         assert not res
         print(f"lambda ({LAMBDA}) < expected result ({M.EXPECTED_RESULT}). res: {res}, correct.")
 
-testAdjointPDRdown(example_21())
-#testAdjointPDRdown(example_23())
+#testAdjointPDRdown(example_21())
+testAdjointPDRdown(example_23())
 #testAdjointPDRdown(study(5/10))    
 #testAdjointPDRdown(die(0.17))
 #testAdjointPDRdown(grid(0.4))
+#testAdjointPDRdown(two_d(0.5))
