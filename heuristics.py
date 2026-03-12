@@ -35,8 +35,8 @@ def generate_zk(F_k_minus_1, Gk, M):
     # constraints_eqs = [[r] + [-x for x in row]]
 
     # NEW
-    constraints_leq_1 = [([1] + [-1 if v == w else 0 for w in range(L)]) for v in range(L) if row[v] == 0]
-    constraints_geq_0 = []
+    constraints_leq_1 = [([1] + [-1 if v == w else 0 for w in range(L)]) for v in range(L)]
+    constraints_geq_0 = [([0] + [1 if v == w else 0 for w in range(L)]) for v in range(L)]
     constraints_eqs = [[r] + [-x for x in row]]
 
     mat = cdd.matrix_from_array(constraints_geq_0 + constraints_leq_1 + constraints_eqs)
@@ -44,17 +44,53 @@ def generate_zk(F_k_minus_1, Gk, M):
     mat.rep_type = cdd.RepType.INEQUALITY
     poly = cdd.polyhedron_from_matrix(mat)
     generators_raw = cdd.copy_generators(poly).array
-    print(f"Gens raw: {generators_raw}")
+    #print(f"Gens raw: {generators_raw}")
     # print("d[0]", [d[0] for d in generators_raw])
+    # generators = [[Frac(x).limit_denominator(1000) for x in d[1:]] for d in generators_raw 
+    #               if d[0] == 1 and all([not (d[v+1] == 0 and row[v] != 0) for v in range(L)])]
     generators = [[Frac(x).limit_denominator(1000) for x in d[1:]] for d in generators_raw if d[0] == 1]
-    print(f"Gens:", [str_list(g) for g in generators])
-    print(f"Phi(F_k_minus) {str_list(Phi(F_k_minus_1, M))}")
+    generators = [d for d in generators if sum([di*ri for di,ri in zip(d,row)]) >= r]
+    #print(f"Gens:", [str_list(g) for g in generators])
+    #print(f"Phi(F_k_minus) {str_list(Phi(F_k_minus_1, M))}")
     Zk = [d for d in generators if vector_leq(Phi(F_k_minus_1, M), d)]
-    print("Zk", [str_list(g) for g in Zk])
+    #print("Zk", [str_list(g) for g in Zk])
     return Zk
 
 def conflict_heuristic_simple(F_k_minus_1, Gk, M):
     return Phi(F_k_minus_1, M)
+
+def compute_Zk_meet(F_k_minus_1, row, r, M):
+    # Returns a boolean whihch is true iff Zk is not empty, and the meet of Zk
+    L = len(F_k_minus_1)
+    result = [1 for _ in range(L)]
+    not_empty = False
+    phi_applied = Phi(F_k_minus_1,M)
+    for i in range(L):
+        generator_basis = [0 for _ in range(L)] # meet of all the generators with this particular extreme coordinate.
+        if row[i] > 0:
+            extreme_coordinate = Frac(r / row[i]).limit_denominator(1000)
+            generator_basis[i] = extreme_coordinate
+            for j in range(L):
+                if i != j:
+                    if row[j] == 0:
+                        generator_basis[j] = 1
+        if vector_leq(phi_applied, generator_basis):
+            result = meet([result, generator_basis])
+            not_empty = True
+    return not_empty,result
+
+def conflict_heuristic_zb_new(F_k_minus_1, Gk, M):
+    assert len(Gk) == 1
+    row, r = Gk.eqs[0]
+    phi_applied = Phi(F_k_minus_1,M)
+    Zk_not_empty, meetZk = compute_Zk_meet(F_k_minus_1, row, r, M)
+    res = []
+    for s in M.S:
+        if row[s] != 0 and Zk_not_empty:
+            res.append(meetZk[s])
+        else:
+            res.append(phi_applied[s])
+    return [Frac(x).limit_denominator(1000) for x in res]
 
 def conflict_heuristic_zb(F_k_minus_1, Gk, M):
     L = len(F_k_minus_1)

@@ -127,7 +127,7 @@ def adjointPDRdown(M: MDP):
 
             # PROPAGATE
             old_F = [[deepcopy(y) for y in x] for x in F]
-            propagate(F, F_meet_conjuncts, M)
+            #propagate(F, F_meet_conjuncts, M)
             if F != old_F:
                 print("Old situation:")
                 [print(f"F{i}", str_list(Fi)) for i, Fi in enumerate(old_F)]
@@ -163,16 +163,20 @@ def adjointPDRdown(M: MDP):
             # print("PHI: ", Phi(F[k-1]))
             # print('Gk: ', Gk)
             zs = conflict_heuristic_simple(F[k-1], Gk, M)
-            print("zs:", str_list(zs))
+            # print("zs:", str_list(zs))
+            zbnew = conflict_heuristic_zb_new(F[k-1], Gk, M)
+            print("zbnew:", str_list(zbnew))
             zb = conflict_heuristic_zb(F[k-1], Gk, M)
             print("zb:", str_list(zb))
-            z01 = conflict_heuristic_01(F[k-1], Gk, M)
-            print("z01:", str_list(z01))
+            assert zb == zbnew
+            # z01 = conflict_heuristic_01(F[k-1], Gk, M)
+            # print("z01:", str_list(z01))
             # zbad = conflict_heuristic_01_bad(F[k-1], Gk, M)
             # print("zbad:", str_list(zbad))
             # zopt = conflict_heuristic_opt(F[k-1], Gk, M)
             # print("zopt", str_list(zopt))
-            z = z01
+            
+            z = zbnew
             # print("Phi(z)", str_list(Phi(z, M)))
             # if vector_leq(Phi(z, M), z) and vector_leq(z, M.PROP):
             #     print("z was perfect.")
@@ -200,8 +204,8 @@ def testAdjointPDRdown(M: MDP):
         print(f"lambda ({LAMBDA}) < expected result ({M.EXPECTED_RESULT}). res: {res}, correct.")
 
 #testAdjointPDRdown(example_21())
-testAdjointPDRdown(example_23())
+#testAdjointPDRdown(example_23())
 #testAdjointPDRdown(study(5/10))    
 #testAdjointPDRdown(die(0.17))
-#testAdjointPDRdown(grid(0.4))
+#testAdjointPDRdown(grid(0.7))
 #testAdjointPDRdown(two_d(0.5))
