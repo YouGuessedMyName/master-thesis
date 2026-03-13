@@ -50,10 +50,9 @@ def generate_zk(F_k_minus_1, Gk, M):
     #               if d[0] == 1 and all([not (d[v+1] == 0 and row[v] != 0) for v in range(L)])]
     generators = [[Frac(x).limit_denominator(1000) for x in d[1:]] for d in generators_raw if d[0] == 1]
     generators = [d for d in generators if sum([di*ri for di,ri in zip(d,row)]) >= r]
-    #print(f"Gens:", [str_list(g) for g in generators])
+    print(f"Gens:", [str_list(g) for g in generators])
     #print(f"Phi(F_k_minus) {str_list(Phi(F_k_minus_1, M))}")
-    return generators
-    Zk = [d for d in generators if vector_leq(Phi(F_k_minus_1, M), d)]
+    Zk = [d for d in generators if vector_leq(F_k_minus_1, d)]
     #print("Zk", [str_list(g) for g in Zk])
     return Zk
 
@@ -77,7 +76,7 @@ def compute_Zk_meet(F_k_minus_1, row, r, M):
 def generate_Zk_new(F_k_minus_1, Gk, M):
     assert len(Gk) == 1
     r, r0 = Gk.eqs[0]
-    phi_applied = Phi(F_k_minus_1, M)
+    phi_applied = F_k_minus_1
 
     n = len(r)
     T = [i for i in range(n) if r[i] > 0] # Only non-zeroes
@@ -112,14 +111,13 @@ def generate_Zk_new(F_k_minus_1, Gk, M):
             for s,val in zip(Z,assign):
                 v[s] = val
             final.append([Frac(vi).limit_denominator(1000) for vi in v])
-    return final
 
-    return [d for d in final if vector_leq(phi_applied, d)]
+    return [d for d in final if vector_leq(phi_applied, d) and sum([di*ri for di,ri in zip(d,r)]) >= r0]
 
 def conflict_heuristic_zb_new(F_k_minus_1, Gk, M):
     assert len(Gk) == 1
     r, r0 = Gk.eqs[0]
-    phi_applied = Phi(F_k_minus_1, M)
+    phi_applied = F_k_minus_1
 
     n = len(r)
     T = [i for i in range(n) if r[i] > 0] # Only non-zeroes
@@ -139,7 +137,7 @@ def conflict_heuristic_zb_new(F_k_minus_1, Gk, M):
                 d[s] = val
                 sum_fixed += r[s]*val
 
-            d_star = (r0 - sum_fixed)/r[s_star]
+            d_star = (r0 - Frac(sum_fixed).limit_denominator(1000))/r[s_star]
 
             if 0 <= d_star <= 1:
                 d[s_star] = d_star
@@ -164,7 +162,7 @@ def conflict_heuristic_zb(F_k_minus_1, Gk, M):
     #print(f"Zk: {Zk}")
     meetZk = meet(Zk)
     #print(f"OLD meet Zk: {str_list(meetZk)}")
-    phi_applied = Phi(F_k_minus_1, M)
+    phi_applied = F_k_minus_1
     #print("PHI:", phi_applied)
     res = []
     for s in M.S:
