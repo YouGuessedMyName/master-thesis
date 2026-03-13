@@ -69,28 +69,89 @@ def compute_Zk_meet(F_k_minus_1, row, r, M):
         generator_basis = [0 for _ in range(L)] # meet of all the generators with this particular extreme coordinate.
         if row[i] > 0:
             extreme_coordinate = Frac(r / row[i]).limit_denominator(1000)
-            generator_basis[i] = extreme_coordinate
-            for j in range(L):
-                if i != j:
-                    if row[j] == 0:
-                        generator_basis[j] = 1
-        if vector_leq(phi_applied, generator_basis):
-            result = meet([result, generator_basis])
-            not_empty = True
+            # First
+        
     return not_empty,result
+
+def generate_Zk_new(F_k_minus_1, Gk, M):
+    assert len(Gk) == 1
+    r, r0 = Gk.eqs[0]
+    phi_applied = Phi(F_k_minus_1, M)
+
+    n = len(r)
+    T = [i for i in range(n) if r[i] > 0] # Only non-zeroes
+    Z = [i for i in range(n) if r[i] <= 0] # Only zeroes
+
+    generators = []
+
+    for s_star in T:
+
+        others = [s for s in T if s != s_star]
+
+        for assign in product([0,1], repeat=len(others)):
+            d = [0]*n
+            sum_fixed = 0
+
+            for s,val in zip(others,assign):
+                d[s] = val
+                sum_fixed += r[s]*val
+
+            d_star = (r0 - sum_fixed)/r[s_star]
+            print("d_star", d_star)
+            print("d", d)
+            if 0 <= d_star <= 1:
+                d[s_star] = d_star
+                if not d in generators:
+                    generators.append(d.copy())
+    # expand zero-coefficient coordinates
+    final = []
+    for g in generators:
+        for assign in product([0,1], repeat=len(Z)):
+            v = g.copy()
+            for s,val in zip(Z,assign):
+                v[s] = val
+            final.append(v)
+
+    return [d for d in final if vector_leq(phi_applied, d)]
 
 def conflict_heuristic_zb_new(F_k_minus_1, Gk, M):
     assert len(Gk) == 1
-    row, r = Gk.eqs[0]
-    phi_applied = Phi(F_k_minus_1,M)
-    Zk_not_empty, meetZk = compute_Zk_meet(F_k_minus_1, row, r, M)
+    r, r0 = Gk.eqs[0]
+    phi_applied = Phi(F_k_minus_1, M)
+
+    n = len(r)
+    T = [i for i in range(n) if r[i] > 0] # Only non-zeroes
+    Z = [i for i in range(n) if r[i] <= 0] # Only zeroes
+
+    generators = []
+
+    for s_star in T:
+
+        others = [s for s in T if s != s_star]
+
+        for assign in product([0,1], repeat=len(others)):
+            d = [0]*n
+            sum_fixed = 0
+
+            for s,val in zip(others,assign):
+                d[s] = val
+                sum_fixed += r[s]*val
+
+            d_star = (r0 - sum_fixed)/r[s_star]
+
+            if 0 <= d_star <= 1:
+                d[s_star] = d_star
+                if vector_leq(phi_applied, d) and not d in generators:
+                    generators.append(d.copy())
+    mt = meet(generators)
     res = []
     for s in M.S:
-        if row[s] != 0 and Zk_not_empty:
-            res.append(meetZk[s])
+        if r[s] != 0 and len(generators) != 0:
+            res.append(mt[s])
         else:
             res.append(phi_applied[s])
-    return [Frac(x).limit_denominator(1000) for x in res]
+    return res
+    
 
 def conflict_heuristic_zb(F_k_minus_1, Gk, M):
     L = len(F_k_minus_1)
@@ -100,7 +161,7 @@ def conflict_heuristic_zb(F_k_minus_1, Gk, M):
     Zk = generate_zk(F_k_minus_1, Gk, M)
     #print(f"Zk: {Zk}")
     meetZk = meet(Zk)
-    # print(f"meet of Zk: {meetZk}")
+    #print(f"OLD meet Zk: {str_list(meetZk)}")
     phi_applied = Phi(F_k_minus_1, M)
     #print("PHI:", phi_applied)
     res = []

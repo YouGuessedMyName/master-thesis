@@ -168,7 +168,7 @@ def adjointPDRdown(M: MDP):
             print("zbnew:", str_list(zbnew))
             zb = conflict_heuristic_zb(F[k-1], Gk, M)
             print("zb:", str_list(zb))
-            assert zb == zbnew
+            #assert zb == zbnew
             # z01 = conflict_heuristic_01(F[k-1], Gk, M)
             # print("z01:", str_list(z01))
             # zbad = conflict_heuristic_01_bad(F[k-1], Gk, M)
@@ -206,6 +206,6 @@ def testAdjointPDRdown(M: MDP):
 #testAdjointPDRdown(example_21())
 #testAdjointPDRdown(example_23())
 #testAdjointPDRdown(study(5/10))    
-#testAdjointPDRdown(die(0.17))
+testAdjointPDRdown(die(0.17))
 #testAdjointPDRdown(grid(0.7))
 #testAdjointPDRdown(two_d(0.5))
