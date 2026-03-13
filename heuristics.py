@@ -52,6 +52,7 @@ def generate_zk(F_k_minus_1, Gk, M):
     generators = [d for d in generators if sum([di*ri for di,ri in zip(d,row)]) >= r]
     #print(f"Gens:", [str_list(g) for g in generators])
     #print(f"Phi(F_k_minus) {str_list(Phi(F_k_minus_1, M))}")
+    return generators
     Zk = [d for d in generators if vector_leq(Phi(F_k_minus_1, M), d)]
     #print("Zk", [str_list(g) for g in Zk])
     return Zk
@@ -110,7 +111,8 @@ def generate_Zk_new(F_k_minus_1, Gk, M):
             v = g.copy()
             for s,val in zip(Z,assign):
                 v[s] = val
-            final.append(v)
+            final.append([Frac(vi).limit_denominator(1000) for vi in v])
+    return final
 
     return [d for d in final if vector_leq(phi_applied, d)]
 

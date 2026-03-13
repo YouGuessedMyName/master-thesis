@@ -6,9 +6,9 @@ TESTS = 1000
 N = 2
 
 for _ in range(TESTS):
-    #Gk = LowerSet([([Frac(random.uniform(0,1)).limit_denominator(1000) for _ in range(N)], Frac(random.uniform(0,1)).limit_denominator(1000))])
+    Gk = LowerSet([([Frac(random.uniform(0,1)).limit_denominator(1000) for _ in range(N)], Frac(random.uniform(0,1)).limit_denominator(1000))])
     #Gk = LowerSet([([Frac(random.uniform(0,1)).limit_denominator(10) for _ in range(N)], Frac(1))])
-    Gk = LowerSet([([Frac(1), Frac(0)], 1)])
+    #Gk = LowerSet([([Frac(1), Frac(0)], 1)])
     F_k_minus_1 = [Frac(random.uniform(0,1)).limit_denominator(1000) for _ in range(N)]
     #F_k_minus_1 = [Frac(0) for _ in range(N)]
     #lambda_ = Frac(random.uniform(0,1)).limit_denominator(1000)
