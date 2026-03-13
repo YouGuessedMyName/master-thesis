@@ -1,4 +1,4 @@
-from adjpdr.helpers import Frac, MDP
+from helpers import Frac, MDP, V
 import stormvogel as sv
 
 def example_21(lambda_=1/4):
@@ -21,7 +21,7 @@ def example_21(lambda_=1/4):
             return ['a']
         
     B = {3}
-    PROP = [Frac(lambda_),Frac(1),Frac(1),Frac(1)]
+    PROP = V([Frac(lambda_),Frac(1),Frac(1),Frac(1)])
     return MDP(S, P, av, B, PROP, 1)
 
 def example_23(lambda_=2/5):
@@ -42,7 +42,7 @@ def example_23(lambda_=2/5):
         else:
             return ['a']
     B = {3}
-    PROP = [Frac(lambda_).limit_denominator(1000),Frac(1),Frac(1),Frac(1)]
+    PROP = V([Frac(lambda_).limit_denominator(1000),Frac(1),Frac(1),Frac(1)])
     return MDP(S, P, av, B, PROP, Frac(2,5))
 
 def from_stormvogel_mdp(sv_mdp):
@@ -88,7 +88,7 @@ def from_stormvogel_problem(sv_model: sv.Model, lambda_, bad_label):
     else:
         S, av, P = from_stormvogel_mdp(sv_model)
     B = [state.id for state in states if bad_label in state.labels]
-    PROP = [Frac(lambda_).limit_denominator(1000)] + [Frac(1) for _ in range(len(S)-1)]
+    PROP = V([Frac(lambda_).limit_denominator(1000)] + [Frac(1) for _ in range(len(S)-1)])
     EXPECTED_RESULT = sv.model_checking(sv_model, f'Pmax=? [F "{bad_label}"]').get_result_of_state(0)
     res = MDP(S, P, av, B, PROP, EXPECTED_RESULT)
     return res
