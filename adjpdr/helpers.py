@@ -5,13 +5,62 @@ from itertools import product
 from numpy import argmax as npargmax
 from z3 import Real, Solver, Sum, sat
 
-class Frac(Fraction):
+# "frac" for fractions and "float" for floats (this only affects printing, we use Fracs for everything otherwise.)
+FRAC = "FRAC"
+FLOAT = "FLOAT"
+NUMBERS = FRAC
+
+SPARSE = "SPARSE"
+DENSE = "DENSE"
+VECTOR_PRINTING = DENSE
+
+DENOM_LIMIT = 1000
+ROUNDING = 2
+
+class V(list):
+    """Custom Vector datatype. Supports the desired functionality of <=, and nice printing."""
+    def __le__(x, y):
+        if len(x) == 0:
+            return True
+        assert len(x) == len(y)
+        for xi, yi in zip(x,y):
+            if xi > yi:
+                return False
+        return True
+    
+    def __str_dense(l):
+        res = "["
+        for i in range (len(l)):
+            res += str(l[i]) 
+            if i != len(l) -1:
+                res += ", "
+        return res + "]"
+
+    def __str_sparse(l):
+        res = "["
+        for i in range (len(l)):
+            if l[i] != 0:
+                res += f"{i}: {l[i]}" 
+                if i != len(l) -1:
+                    res += ", "
+        return res + "]"
+
     def __str__(self):
-        if self == 1:
-            return "1"
-        elif self == 0:
-            return "0"
-        return f"{self.numerator}/{self.denominator}"
+        if VECTOR_PRINTING == SPARSE:
+            return self.__str_dense()
+        return self.__str_sparse()
+
+class Frac(Fraction):
+    """Custom fraction type that supports nice printing."""
+    def __str__(self):
+        if NUMBERS == FRAC:
+            if self == 1:
+                return "1"
+            elif self == 0:
+                return "0"
+            return f"{self.numerator}/{self.denominator}"
+        else:
+            return round(float(self), ROUNDING)
 
     def limit_denominator(self, max_denominator = 1000000):
         return Frac(super().limit_denominator(max_denominator))
@@ -27,23 +76,6 @@ class MDP:
 
     def possible_policies(self):
         return [list(t) for t in product(*[self.av(s) for s in self.S])]
-
-def str_list(l):
-    res = "["
-    for i in range (len(l)):
-        res += str(l[i]) 
-        if i != len(l) -1:
-            res += ", "
-    return res + "]"
-
-def str_list2(l):
-    res = "["
-    for i in range (len(l)):
-        if l[i] != 0:
-            res += f"{i}: {l[i]}" 
-            if i != len(l) -1:
-                res += ", "
-    return res + "]"
 
 @dataclass
 class LowerSet:
@@ -74,10 +106,12 @@ class LowerSet:
             return "{ v : True }" 
         res = "{ "
         for row, r in self.eqs:
-            res += "v : " + str_list(row) + " * v <= " + str(r) + "; "
+            res += "v : " + str(row) + " * v <= " + str(r) + "; "
         return res + "}"
     
     def __le__(self, other):
+        """Checking if a lower set is contained in another lower set is accomplished 
+        by asking the SMT solver to come up with a point that is inside the one but not the other."""
         vars_ = [Real(f"x_{i}") for i in range(len(self.eqs[0][0]))]
         s = Solver()
         for x in vars_:
@@ -90,43 +124,38 @@ class LowerSet:
                 
                 s.add(Sum([srow[i] * vars_[i] for i in range(len(vars_)) if srow[i] != 0]) <= sr) # A point contained in self
                 s.add(Sum([otrow[i] * vars_[i] for i in range(len(vars_)) if otrow[i] != 0]) > otr) # That is *not* contained in other
-            #print(s)
         if s.check() == sat:
-            print("Not contained, take the point:", s.model())
+            #print("Not contained, take the point:", s.model())
             return False
         return True
 
 
-def meet(l: list[list[float]]):
+def meet(l: list[V[Frac]]):
     if len(l) == 0:
-        return []
+        return V([])
     lowest = l[0]
     for li in l:
         lowest = [min(x,y) for x, y in zip(li, lowest)]
-    return lowest
+    return V(lowest)
 
 def dedup(l):
     res = []
     [res.append(x) for x in l if x not in res]
     return res
 
-def vector_leq(x, y):
-    if len(x) == 0:
-        return True
-    assert len(x) == len(y)
-    for xi, yi in zip(x,y):
-        if xi > yi:
-            return False
-    return True
-
 def ceil(n):
-    return 0 if n == Frac(0) else Frac(1)
+    return Frac(0) if n == Frac(0) else Frac(1)
 
 def argmax(results, args):
     #print("args", args)
     return args[npargmax(results)]
 
-def apply(f, n, arg, M):
+def apply(f, n, arg):
+    """Apply f n times to arg."""
+    return arg if n <= 0 else f(apply(f, n-1, arg)) 
+
+def apply2(f, n, arg, M):
+    """Apply a function n times to these two arguments."""
     return arg if n <= 0 else f(apply(f, n-1, arg, M), M)
 
 # print(LowerSet([([0,0], 1)]) <= LowerSet([([2,0], 1)]))

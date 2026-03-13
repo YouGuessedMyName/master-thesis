@@ -1,5 +1,5 @@
-from heuristics import *
-from examples import *
+from adjpdr.heuristics import *
+from adjpdr.examples import *
 import random
 
 TESTS = 1000

@@ -1,5 +1,5 @@
-from helpers import *
-from operators import *
+from adjpdr.helpers import *
+from adjpdr.operators import *
 import cdd
 from z3 import Real, Optimize, Sum
 
@@ -90,13 +90,13 @@ def generate_Zk_new(F_k_minus_1, Gk, M):
 
         for assign in product([0,1], repeat=len(others)):
             d = [0]*n
-            sum_fixed = 0
+            sum_fixed = 0 # The sum that you get from the other linear factors already
 
             for s,val in zip(others,assign):
                 d[s] = val
                 sum_fixed += r[s]*val
 
-            d_star = (r0 - sum_fixed)/r[s_star]
+            d_star = (r0 - sum_fixed)/r[s_star] # The maximum amount that you can still assign to s* to be within the cube.
             print("d_star", d_star)
             print("d", d)
             if 0 <= d_star <= 1:
@@ -152,7 +152,6 @@ def conflict_heuristic_zb_new(F_k_minus_1, Gk, M):
             res.append(phi_applied[s])
     return res
     
-
 def conflict_heuristic_zb(F_k_minus_1, Gk, M):
     L = len(F_k_minus_1)
     assert len(Gk) == 1

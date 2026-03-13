@@ -1,6 +1,6 @@
-from heuristics import *
+from adjpdr.heuristics import *
 from copy import deepcopy
-from examples import *
+from adjpdr.examples import *
 
 
 def assert_invariants(F, G, k, n, M: MDP, F_meet_conjuncts):
