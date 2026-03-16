@@ -2,13 +2,13 @@
 import cdd
 from helpers import *
 
-def generator_set_cdd(row: V, r: Frac) -> list[V]:
+def generator_set_cdd(r: V, r0: Frac) -> list[V]:
     """Get the tight generator set using cdd, for the set { v : row*v <= r }."""
-    L = len(row)
+    L = len(r)
 
     constraints_leq_1 = [([1] + [-1 if v == w else 0 for w in range(L)]) for v in range(L)] # All coordinates <= 1
     constraints_geq_0 = [([0] + [1 if v == w else 0 for w in range(L)]) for v in range(L)] # All coordinates >= 0
-    constraints_eqs = [[r] + [-x for x in row]] # Constraints from the equality itself
+    constraints_eqs = [[r0] + [-x for x in r]] # Constraints from the equality itself
 
     mat = cdd.matrix_from_array(constraints_geq_0 + constraints_leq_1 + constraints_eqs)
     mat.rep_type = cdd.RepType.INEQUALITY
@@ -55,7 +55,7 @@ def generator_set(r: V, r0: Frac) -> list[V]:
                 v[s] = val
             expanded.append(V([Frac(vi).limit_denominator(DENOM_LIMIT) for vi in v]))
     # Add in the cube coordinates.
-    cubes = [V([0,0]), V([0,1]), V([1,0]), V([1,1])]
+    cubes = [V([Frac(x) for x in t]) for t in product([0,1], repeat=L)]
     new_cubes = []
     for c in cubes:
         add = True
@@ -64,13 +64,22 @@ def generator_set(r: V, r0: Frac) -> list[V]:
                 add = False
         if add:
             new_cubes.append(c)
-    return expanded + new_cubes
+    return dedup(expanded + new_cubes)
 
 def tight(gens: list[V], r, r0) -> list[V]:
     """Tight generators are generators v, s.t. row*v sum up to r0."""
     epsilon = 1 / DENOM_LIMIT
     return [d for d in gens if sum([di*ri for di,ri in zip(d,r)]) >= r0 - epsilon]
 
-def generator_set_meet(r, r0, v):
-    """Get the meet of Zk = { d : generator_set(r, r0) | v <= d}."""
+def meet_Zk_slow(r, r0, v, source: str = "own"):
+    """Get the meet of Zk = { d : generator_set(r, r0) | v <= d}.
+    If Zk is empty, returns a vector of length 0."""
+    gen = generator_set if source == "own" else generator_set_cdd
+    tight_gens = tight(gen(r,r0), r, r0)
+    # print("tight gen", [str(w) for w in tight_gens])
+    Zk = list(filter(lambda d : v <= d, tight_gens))
+    # print("Zk", [str(w) for w in Zk])
+    return meet(Zk)
+
+def meet_Zk_fast(r, r0, v):
     pass

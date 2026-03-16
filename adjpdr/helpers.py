@@ -1,6 +1,6 @@
 from fractions import Fraction
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Collection
 from itertools import product
 from numpy import argmax as npargmax
 from z3 import Real, Solver, Sum, sat
@@ -9,14 +9,14 @@ import random
 # "frac" for fractions and "float" for floats (this only affects printing, we use Fracs for everything otherwise.)
 FRAC = "FRAC"
 FLOAT = "FLOAT"
-NUMBERS = FLOAT
+NUMBERS = FRAC
 
 SPARSE = "SPARSE"
 DENSE = "DENSE"
 VECTOR_PRINTING = DENSE
 
-DENOM_LIMIT = 100
-ROUNDING = 2
+DENOM_LIMIT = 1000
+ROUNDING = 20
 
 def dedup(l):
     res = []
@@ -99,8 +99,16 @@ class V(list):
     @classmethod
     def random(cls, n):
         return cls([Frac(random.uniform(0,1)).limit_denominator(DENOM_LIMIT)]*n)
-
+    
 def downarrow(p: V) -> V:
+    for i, entry in enumerate(p):
+        if i != 0:
+            assert entry == 1
+    return LowerSet([(
+        [1] + [0 for _ in range(len(p)-1)], 
+            Frac(p[0]).limit_denominator(DENOM_LIMIT))])
+
+def downarrow1(p: V) -> V:
     for i, entry in enumerate(p):
         if i != 0:
             assert entry == 1
@@ -108,7 +116,8 @@ def downarrow(p: V) -> V:
         [Frac(1/p[0]).limit_denominator(DENOM_LIMIT)] + [0 for _ in range(len(p)-1)], 
             Frac(1))])
 
-def meet(l: list[V[Frac]]) -> V:
+def meet(l: Collection[V[Frac]]) -> V:
+    """Get the meet of the list of vectors. If the collection is empty, returns a vector of length 0."""
     if len(l) == 0:
         return V([])
     lowest = l[0]
@@ -117,19 +126,25 @@ def meet(l: list[V[Frac]]) -> V:
     return V(lowest)
 
 class LowerSet:
-    eqs: list[V, Frac]
+    eqs: list[tuple[V, Frac]]
 
     def __init__(self, eqs: tuple[list[V|list], Frac|float]):
         self.eqs = [(V([Frac(ri) for ri in row]), Frac(r)) for row,r in eqs]
 
-    def __contains__(self, F):
+    def approx_contains(self, F: V, epsilon: float):
+        if len(F) == 0:
+            return True
+        for (row, r) in self.eqs:
+            if sum(row[s] * F[s] for s in range(len(F))) > r + abs(epsilon):
+                return False
+        return True
+
+    def __contains__(self, F: V):
         if len(F) == 0:
             return True
         for (row, r) in self.eqs:
             if sum(row[s] * F[s] for s in range(len(F))) > r:
-                #print(F, "is not contained in", self)
                 return False
-        #print(F, "is contained in", self)
         return True
 
     def __add__(one, two):
@@ -175,6 +190,7 @@ class LowerSet:
     def is_empty(self):
         for r,r0 in self.eqs:
             if r0 < 0:
+                #print("empty",r,r0)
                 return True
         return False
     
@@ -234,24 +250,22 @@ class MDP:
 
     def PsiPolicyEq(M, policy: list[str], row: V, r: Frac) -> LowerSet:
         """Get Psi for one linear equation and policy."""
-        next_step = M.Theta(policy, row)
-        #print("next step", str_list(next_step))
-        # Now account for Phi setting bad states to 1
+        new_row = [ri for ri in row]
         deduct = 0
         for s in M.B:
             #print(s)
-            deduct += next_step[s]
-            next_step[s] = 0
+            deduct += new_row[s]
+            new_row[s] = 0
+        next_step = M.Theta(policy, new_row)
+        #print("next step", str_list(next_step))
+        # Now account for Phi setting bad states to 1
+        
         # print("r", r, "deduct", deduct)
         return next_step, r - deduct
 
-    def PsiPolicy(M, policy: list, G) -> LowerSet:
+    def PsiPolicy(M, policy: list, G: LowerSet) -> LowerSet:
         """Get Psi for this policy."""
-        res = LowerSet([M.PsiPolicyEq(policy, row, r) for (row, r) in G.eqs])
-        for (_, r) in res.eqs:
-            if r < 0:
-                return LowerSet.empty(len(M.S))
-        return res
+        return LowerSet([M.PsiPolicyEq(policy, row, r) for (row, r) in G.eqs])
 
     def Psi(M, G: LowerSet) -> LowerSet:
         res = LowerSet([])

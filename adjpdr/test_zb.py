@@ -5,8 +5,8 @@ import random
 import numpy as np
 
 TESTS = 1000
-N = 2
-epsilon = 0.1
+N = 4
+epsilon = 0.01
 
 # If this test fails, its just rounding errors dw.
 def test_generators():
@@ -21,6 +21,8 @@ def test_generators():
             print("r", r)
             print("with_cdd", [str(v) for v in with_cdd])
             print("own_impl", [str(v) for v in own_impl])
+            # print("with_cdd", with_cdd)
+            # print("own_impl", own_impl)
         assert equal
 
 test_generators()

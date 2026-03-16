@@ -1,16 +1,29 @@
 from helpers import *
 import cdd
 from z3 import Real, Optimize, Sum
+import spaces
 
-def candidate_heuristic(p: V) -> LowerSet:
+def Ca(p: V) -> LowerSet:
     return downarrow(p)
 
-def decide_heuristic(F:V, Gk:LowerSet, M:MDP) -> LowerSet:
+def De(F:V, Gk:LowerSet, M: MDP) -> LowerSet:
     policy = M.PhiPolicyArgMax(F)
     return M.PsiPolicy(policy, Gk)
 
-def conflict_heuristic_simple(F: V, _:LowerSet, M) -> V:
+def Cs(F: V, _:LowerSet, M: MDP) -> V:
     return M.Phi(F)
+
+def Cb(F:V, Gk:LowerSet, M: MDP) -> V:
+    assert len(Gk) == 1
+    r, r0 = Gk.eqs[0]
+    meetZk = spaces.meet_Zk_slow(r, r0, M.Phi(F))
+    phi_applied = M.Phi(F)
+    return V([
+        meetZk[s] if r[s] != 0 and len(meetZk) != 0
+        else phi_applied[s]
+        for s in range(len(r))
+    ])
+
 
 # def generate_zk(F_k_minus_1, Gk, M):
 #     # print(f"Fk-1: {F_k_minus_1}")

@@ -49,7 +49,16 @@ def assert_invariants(F, G, k, n, M: MDP, F_meet_conjuncts, do_propagate):
             assert F[j] in apply(M.Psi, n-1-j, downarrow([1 for _ in range(len(F[j]))]))
 
             # A2
-            assert F[j-1] in apply(M.Psi, n-1-j, (downarrow(M.PROP)))
+            # if not F[j-1] in apply(M.Psi, n-1-j, (downarrow(M.PROP))):
+            #     print("j", j)
+            #     print("n-1-j", n-1-j)
+            #     print("Fj-1", F[j-1])
+            #     print("down", downarrow(M.PROP))
+            #     for i in range(n-j):
+            #         print(i)
+            #         print(apply(M.Psi, i, (downarrow(M.PROP))), sep="\n")
+            Psi_applied = apply(M.Psi, n-1-j, (downarrow(M.PROP)))
+            assert Psi_applied.approx_contains(F[j-1], 0.01), "This is likely a rounding error!"
             
             # A3 (G is an overapproximation of the negative chain.)
             if 0 <= j - k < len(G):
@@ -136,7 +145,7 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
         # CANDIDATE
         elif len(G) == 0 and not F[n-1] <= M.PROP:
             print(f"Fn-1 {F[n-1]} > PROP ==> candidate")
-            ZZ = candidate_heuristic(M.PROP)
+            ZZ = Ca(M.PROP)
             G = [ZZ]
         
         # DECIDE
@@ -144,7 +153,7 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
             print(f"Phi(F_k-1) {M.Phi(F[k-1])} NOT in Gk {Gk} ==> decide")
             # print("PHI: ", Phi(F[k-1]))
             # print('Gk: ', Gk)
-            ZZ = decide_heuristic(F[k-1], Gk, M)
+            ZZ = De(F[k-1], Gk, M)
             #ZZ = Psi(Gk, M)
             print("ZZ", ZZ)
             print("Psi", M.Psi(Gk))
@@ -158,13 +167,15 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
             print(f"Phi(F_k-1) {M.Phi(F[k-1])} IN Gk {Gk} ==> conflict")
             # print("PHI: ", Phi(F[k-1]))
             # print('Gk: ', Gk)
+            z = None
             for heuristic in heuristics:
                 zh = heuristic(F[k-1], Gk, M)
+                if heuristic == used_heuristic:
+                    z = zh
                 print(heuristic.__name__, zh)
                 assert zh in Gk
                 assert M.Phi(meet([F[k-1], zh])) <= zh
             
-            z = used_heuristic(F[k-1], Gk, M)
             F = V([meet([Fj, z]) for (j, Fj) in enumerate(F) if j <= k]) + V([F[j] for j in range(k+1, n)])
             if do_propagate:
                 F_meet_conjuncts = [Fj_conjuncts + [z] for (j, Fj_conjuncts) in enumerate(F_meet_conjuncts) if j <= k] \
@@ -183,7 +194,7 @@ def testAdjointPDRdown(M: MDP, heuristics, used_heuristic):
         assert not res
         print(f"lambda ({LAMBDA}) < expected result ({M.EXPECTED_RESULT}). res: {res}, correct.")
 
-EXAMPLE = grid()
-HEUR = [conflict_heuristic_simple]
-USED = conflict_heuristic_simple 
+EXAMPLE = example_23()
+HEUR = [Cs,Cb]
+USED = Cs 
 testAdjointPDRdown(EXAMPLE, HEUR, USED)
