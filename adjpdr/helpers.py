@@ -15,7 +15,7 @@ SPARSE = "SPARSE"
 DENSE = "DENSE"
 VECTOR_PRINTING = DENSE
 
-DENOM_LIMIT = 1000
+DENOM_LIMIT = 1000000000000000000000000000000000000000000
 ROUNDING = 20
 
 def dedup(l):
@@ -109,7 +109,7 @@ def downarrow(p: V) -> V:
         if i != 0:
             assert entry == 1
     return LowerSet([(
-        [1] + [0 for _ in range(len(p)-1)], 
+        V([Frac(1)] + [0 for _ in range(len(p)-1)]), 
             Frac(p[0]).limit_denominator(DENOM_LIMIT))])
 
 def downarrow1(p: V) -> V:
@@ -117,7 +117,7 @@ def downarrow1(p: V) -> V:
         if i != 0:
             assert entry == 1
     return LowerSet([(
-        [Frac(1/p[0]).limit_denominator(DENOM_LIMIT)] + [0 for _ in range(len(p)-1)], 
+        V([Frac(1/p[0]).limit_denominator(DENOM_LIMIT)] + [0 for _ in range(len(p)-1)]), 
             Frac(1))])
 
 def meet(l: Collection[V[Frac]]) -> V:
@@ -146,8 +146,8 @@ class LowerSet:
     def __contains__(self, F: V):
         if len(F) == 0:
             return True
-        for (row, r) in self.eqs:
-            if sum(row[s] * F[s] for s in range(len(F))) > r:
+        for (r, r0) in self.eqs:
+            if sum(r[s] * F[s] for s in range(len(F))) > r0:
                 return False
         return True
 
@@ -166,9 +166,9 @@ class LowerSet:
             return "{ v : True }" 
         if self.is_empty():
             return "{ }"
-        res = "{ "
+        res = "{ v: "
         for row, r in self.eqs:
-            res += "v : " + str(row) + " * v <= " + str(r) + "; "
+            res += str(row) + " * v <= " + str(r) + "; "
         return res + "}"
     
     def __le__(self, other):
@@ -265,7 +265,7 @@ class MDP:
         # Now account for Phi setting bad states to 1
         
         # print("r", r, "deduct", deduct)
-        return next_step, r - deduct
+        return next_step, Frac(r - deduct).limit_denominator(DENOM_LIMIT)
 
     def PsiPolicy(M, policy: list, G: LowerSet) -> LowerSet:
         """Get Psi for this policy."""

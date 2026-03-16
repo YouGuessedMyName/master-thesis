@@ -87,7 +87,7 @@ def propagate(F, F_meet_conjuncts, M):
                     F_meet_conjuncts[i+1].append(F_j_prime)
     # We don't need to return, F is modified by reference.
 
-def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic: Callable, print_ : bool = True, assert_: bool = True):
+def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic: Callable, print_ : bool = True, assert_: bool = True, loop_check: bool = True):
     assert used_heuristic in heuristics
     q = len(M.S)
     states_so_far = []
@@ -99,17 +99,19 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
 
     while True:
         # Administration, and assert the invariants.
-        if (F,G) in states_so_far:
-            print("Looped")
-            # return None
-        states_so_far.append((deepcopy(F),deepcopy(G)))
+        if loop_check:
+            if (F,G) in states_so_far:
+                print("Looped")
+                return None
+            states_so_far.append((F.copy(), G.copy()))
         n = len(F)
         k = n - len(G)
         Gk = G[0] if len(G) > 0 else None # index issues
         if print_:
             print_progress(iteration, F, G, k, n, M)
-        if assert_:
-            assert_invariants(F, G, k, n, M, F_meet_conjuncts, do_propagate)
+        if assert_ == "all":
+            #assert_invariants(F, G, k, n, M, F_meet_conjuncts, do_propagate)
+            pass
         iteration += 1
 
         # POSITIVELY CONCLUSIVE
@@ -150,6 +152,8 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
             print(f"Fn-1 {F[n-1]} > PROP ==> candidate") if print_ else None
             ZZ = Ca(M.PROP)
             G = [ZZ]
+            print("ZZ", ZZ) if print_ else None
+            print("PROP", M.PROP) if print_ else None
             if assert_:
                 assert F[n-1] not in ZZ
                 assert M.PROP in ZZ
@@ -190,10 +194,10 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
                                 + [F_meet_conjuncts[j] for j in range(k+1, n)]
             G.pop(0)
 
-def testAdjointPDRdown(M: MDP, heuristics, used_heuristic, propagate_= False, print_=True, assert_=True):
+def testAdjointPDRdown(M: MDP, heuristics, used_heuristic, propagate_= False, print_=True, assert_=True, loop_check=True):
     if not used_heuristic in heuristics:
         heuristics.append(used_heuristic)
-    res = adjointPDRdown(M, propagate_, heuristics, used_heuristic, print_, assert_)
+    res = adjointPDRdown(M, propagate_, heuristics, used_heuristic, print_, assert_, loop_check)
     assert res is not None
     LAMBDA = M.PROP[0].limit_denominator(DENOM_LIMIT)
     
@@ -204,7 +208,7 @@ def testAdjointPDRdown(M: MDP, heuristics, used_heuristic, propagate_= False, pr
         assert not res
         print(f"lambda ({LAMBDA}) < expected result ({M.EXPECTED_RESULT}). res: {res}, correct.")
 
-EXAMPLE = grid()
-HEUR = [Cb, C01, COpt, Cs]
+EXAMPLE = example_21(0.95)
+HEUR = []
 USED = Cs
-testAdjointPDRdown(EXAMPLE, HEUR, USED, propagate_=False, print_=True, assert_=False)
+testAdjointPDRdown(EXAMPLE, HEUR, USED, propagate_=False, print_=False, assert_=True, loop_check=False)

@@ -62,22 +62,18 @@ def COpt(F: V, Gk: LowerSet, M: MDP) -> V:
         opt.add(x >= 0)
         opt.add(x <= 1)
     opt.add(Sum([r[i] * vars_[i] for i in range(len(vars_)) if r[i] != 0]) <= r0)
-    opt.add([phi_applied[i] <= vars_[i] for i in range(len(vars_))])
-
+    opt.add([vars_[i] >= phi_applied[i] for i in range(len(vars_))])
     opt.add(reward == Sum(vars_))
     h = opt.maximize(reward)
     opt.check()
-    opt.lower(h)
     model = opt.model()
-    sol = [model[x].as_decimal(DENOM_LIMIT) for x in vars_]
-    
+    sol = [model[x].as_fraction() for x in vars_]
+
     res = []
     for s in M.S:
         if r[s] != 0:
-            if sol[s][-1] != "?": # Wierd z3 shenanigans
-                res.append(sol[s])
-            else:
-                res.append(sol[s][:-1])
+            res.append(sol[s])
         else:
             res.append(phi_applied[s])
-    return V([Frac(float(x)).limit_denominator(1000) for x in res])
+
+    return V([Frac(x).limit_denominator(DENOM_LIMIT) for x in res])

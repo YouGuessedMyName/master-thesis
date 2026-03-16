@@ -1,4 +1,4 @@
-from helpers import Frac, MDP, V
+from helpers import Frac, MDP, V, DENOM_LIMIT
 import stormvogel as sv
 
 def example_21(lambda_=1/4):
@@ -10,7 +10,7 @@ def example_21(lambda_=1/4):
         2 : {'b': {0: 1, 1: 0, 2: 0, 3: 0}},
         3 : {'a': {0: 0, 1: 0, 2: 0, 3: 1}}}
     def P(s,a,s_):
-        return Frac(P_DICT[s][a][s_]).limit_denominator()
+        return Frac(P_DICT[s][a][s_]).limit_denominator(DENOM_LIMIT)
     
     def av(s):
         if s == 0:
@@ -21,7 +21,7 @@ def example_21(lambda_=1/4):
             return ['a']
         
     B = {3}
-    PROP = V([Frac(lambda_),Frac(1),Frac(1),Frac(1)])
+    PROP = V([Frac(lambda_).limit_denominator(DENOM_LIMIT),Frac(1),Frac(1),Frac(1)])
     return MDP(S, P, av, B, PROP, 1)
 
 def example_23(lambda_=2/5):
@@ -33,7 +33,7 @@ def example_23(lambda_=2/5):
         2 : {'b': {0: 0, 1: 0, 2: 1, 3: 0}},
         3 : {'a': {0: 0, 1: 0, 2: 0, 3: 1}}}
     def P(s,a,s_):
-        return Frac(P_DICT[s][a][s_]).limit_denominator()
+        return Frac(P_DICT[s][a][s_]).limit_denominator(DENOM_LIMIT)
     def av(s):
         if s == 0:
             return ['a','b']
@@ -42,7 +42,7 @@ def example_23(lambda_=2/5):
         else:
             return ['a']
     B = {3}
-    PROP = V([Frac(lambda_).limit_denominator(1000),Frac(1),Frac(1),Frac(1)])
+    PROP = V([Frac(lambda_).limit_denominator(DENOM_LIMIT),Frac(1),Frac(1),Frac(1)])
     return MDP(S, P, av, B, PROP, Frac(2,5))
 
 def from_stormvogel_mdp(sv_mdp):
