@@ -5,6 +5,14 @@ from examples import *
 def assert_invariants(F, G, k, n, M: MDP, F_meet_conjuncts, do_propagate):
     for Fi in F: # No accidental regular lists
         assert type(Fi) == V
+        for entry in F[k-1]: # Correct types
+            assert type(entry) == Frac
+            assert type(entry.numerator) == int
+            assert type(entry.denominator) == int
+        for entry in G[0].eqs[0]:
+            assert type(entry) == Frac
+            assert type(entry.numerator) == int
+            assert type(entry.denominator) == int
     
     
     if do_propagate: # The meet conjuncts are correct
@@ -110,9 +118,11 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
         if print_:
             print_progress(iteration, F, G, k, n, M)
         if assert_ == "all":
-            #assert_invariants(F, G, k, n, M, F_meet_conjuncts, do_propagate)
-            pass
+            assert_invariants(F, G, k, n, M, F_meet_conjuncts, do_propagate)
         iteration += 1
+
+        # print("F", F[k-1])
+        # print("Phi", M.Phi(F[k-1]))
 
         # POSITIVELY CONCLUSIVE
         for j in range(len(F)-1):
@@ -187,6 +197,9 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
                 if assert_:
                     assert zh in Gk
                     assert M.Phi(meet([F[k-1], zh])) <= zh
+                    for zi in zh:
+                        assert type(zi.numerator) == int
+                        assert type(zi.denominator) == int
             
             F = V([meet([Fj, z]) for (j, Fj) in enumerate(F) if j <= k]) + V([F[j] for j in range(k+1, n)])
             if do_propagate:
@@ -208,7 +221,8 @@ def testAdjointPDRdown(M: MDP, heuristics, used_heuristic, propagate_= False, pr
         assert not res
         print(f"lambda ({LAMBDA}) < expected result ({M.EXPECTED_RESULT}). res: {res}, correct.")
 
-EXAMPLE = example_21(0.95)
+# If it loops or assertion error or something, often you have to increase DENOM_LIMIT in helpers.py
+EXAMPLE = example_21(0.9999)
 HEUR = []
-USED = Cs
-testAdjointPDRdown(EXAMPLE, HEUR, USED, propagate_=False, print_=False, assert_=True, loop_check=False)
+USED = Cb
+testAdjointPDRdown(EXAMPLE, HEUR, USED, propagate_=False, print_=False, assert_=True, loop_check=True)

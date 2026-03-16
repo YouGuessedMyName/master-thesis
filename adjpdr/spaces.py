@@ -68,7 +68,7 @@ def generator_set(r: V, r0: Frac) -> list[V]:
 
 def is_tight(r, r0, d):
     epsilon = 1 / DENOM_LIMIT # Used for testing
-    return sum([di*ri for di,ri in zip(d,r)]) >= r0
+    return sum([Frac.fix(di)*Frac.fix(ri) for di,ri in zip(d,r)]) >= r0
 
 def tight(gens: list[V], r, r0) -> list[V]:
     """Tight generators are generators v, s.t. row*v sum up to r0."""
@@ -104,9 +104,9 @@ def meet_Zk_fast(r, r0, v):
 
             for s,val in zip(others,assign):
                 d[s] = val
-                sum_fixed += r[s]*val
+                sum_fixed += Frac.fix(r[s])*val
 
-            d_star = (r0 - sum_fixed)/r[s_star] # The maximum amount that you can still assign to s* to be within the cube.
+            d_star = (r0 - sum_fixed)/Frac.fix(r[s_star]) # The maximum amount that you can still assign to s* to be within the cube.
             if v[s_star] <= d_star <= 1:
                 # For the elments of Z, we assign zero wherever possible without violating the constraint on v, otherwise a 1.
                 for i in Z:

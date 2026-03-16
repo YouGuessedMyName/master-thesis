@@ -15,7 +15,7 @@ SPARSE = "SPARSE"
 DENSE = "DENSE"
 VECTOR_PRINTING = DENSE
 
-DENOM_LIMIT = 1000000000000000000000000000000000000000000
+DENOM_LIMIT = 1e100
 ROUNDING = 20
 
 def dedup(l):
@@ -40,6 +40,7 @@ def apply2(f, n, arg, M):
 
 class Frac(Fraction):
     """Custom fraction type that supports nice printing."""
+
     def __str__(self):
         if NUMBERS == FRAC:
             if self.is_integer():
@@ -50,6 +51,10 @@ class Frac(Fraction):
 
     def limit_denominator(self, max_denominator = 1000000):
         return Frac(super().limit_denominator(max_denominator))
+
+    @classmethod
+    def fix(cls, fraction: Fraction):
+        return cls(int(fraction.numerator), int(fraction.denominator))
 
 class V(list):
     """Custom Vector datatype. Supports the desired functionality of <=, and nice printing."""
@@ -126,7 +131,7 @@ def meet(l: Collection[V[Frac]]) -> V:
         return V([])
     lowest = l[0]
     for li in l:
-        lowest = [min(x,y) for x, y in zip(li, lowest)]
+        lowest = [Frac(min(x,y)).limit_denominator(DENOM_LIMIT) for x, y in zip(li, lowest)]
     return V(lowest)
 
 class LowerSet:
@@ -147,7 +152,7 @@ class LowerSet:
         if len(F) == 0:
             return True
         for (r, r0) in self.eqs:
-            if sum(r[s] * F[s] for s in range(len(F))) > r0:
+            if sum([Frac.fix(r[s]) * F[s] for s in range(len(F))]) > r0:
                 return False
         return True
 
@@ -219,16 +224,16 @@ class MDP:
         if len(F) == 0:
             return V.empty()
         return V([
-            1 if s in M.B else
-                max([Frac(sum(M.P(s,a,s_) * F[s_] for s_ in M.S)).limit_denominator(DENOM_LIMIT) 
-                    for a in M.av(s)])
+            Frac(1) if s in M.B else
+                Frac.fix(Frac(max([(sum(M.P(s,a,s_) * F[s_] for s_ in M.S)) 
+                    for a in M.av(s)])).limit_denominator(DENOM_LIMIT))
             for s in M.S
         ])
     
     def PhiPolicy(M, policy: list[str], F: V) -> V:
         return V([
-            1 if s in M.B else
-                sum(M.P(s,policy[s],s_) * F[s_] for s_ in M.S)
+            Frac(1) if s in M.B else
+                Frac(sum(M.P(s,policy[s],s_) * F[s_] for s_ in M.S)).limit_denominator(DENOM_LIMIT)
             for s in M.S
         ])
 
@@ -258,7 +263,7 @@ class MDP:
         deduct = 0
         for s in M.B:
             #print(s)
-            deduct += new_row[s]
+            deduct += Frac.fix(new_row[s])
             new_row[s] = 0
         next_step = M.Theta(policy, new_row)
         #print("next step", str_list(next_step))
