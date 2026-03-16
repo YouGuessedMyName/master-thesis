@@ -208,3 +208,61 @@ def two_d(lambda_):
     model = sv.bird.build_bird(delta, init=0, labels=labels, modeltype=sv.ModelType.DTMC)
     problem = from_stormvogel_problem(model, lambda_=lambda_, bad_label="bad")
     return problem
+
+def ngrid_dtmc(N=5, lambda_=0.5):
+    def delta(s):
+        if s == (N-1,N-1):
+            return [(1,s)]
+        elif s[0] == N-1:
+            return [(1, s)]
+        elif s[1] == N-1:
+            return [(1, s)]
+        res = []
+        if s[0] + 1 < N:
+            res.append((0.5, (s[0]+1, s[1])))
+        if s[1] + 1 < N:
+            res.append((0.5, (s[0], s[1]+1)))
+        return res
+
+    def labels(s):
+        return ["bad"] if s == (N-2, N-1) else []
+
+    model = sv.bird.build_bird(
+        init=(0, 0), labels=labels, delta=delta,modeltype=sv.ModelType.DTMC
+    )
+    problem = from_stormvogel_problem(model, lambda_=lambda_, bad_label="bad")
+    return problem
+
+def ngrid(N=5, lambda_=0.5):
+    ACTION_SEMANTICS = {"l": (-1, 0), "r": (1, 0), "u": (0, -1), "d": (0, 1)}
+
+
+    def available_actions(s):
+        res = []
+        if s[0] > 0:
+            res.append("l")
+        if s[0] < N - 1:
+            res.append("r")
+        if s[1] > 0:
+            res.append("u")
+        if s[1] < N - 1:
+            res.append("d")
+        return res
+
+
+    def pairwise_plus(t1, t2):
+        return (t1[0] + t2[0], t1[1] + t2[1])
+
+
+    def delta(s, a):
+        return [(1, pairwise_plus(s, ACTION_SEMANTICS[a]))]
+
+
+    def labels(s):
+        return ["bad"] if s == (N-1, N-1) else []
+
+    model = sv.bird.build_bird(
+        init=(0, 0), available_actions=available_actions, labels=labels, delta=delta
+    )
+    problem = from_stormvogel_problem(model, lambda_=lambda_, bad_label="bad")
+    return problem

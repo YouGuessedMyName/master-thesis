@@ -13,9 +13,9 @@ NUMBERS = FRAC
 
 SPARSE = "SPARSE"
 DENSE = "DENSE"
-VECTOR_PRINTING = DENSE
+VECTOR_PRINTING = SPARSE
 
-DENOM_LIMIT = 1e100
+DENOM_LIMIT = 1e10
 ROUNDING = 20
 
 def dedup(l):
@@ -41,6 +41,11 @@ def apply2(f, n, arg, M):
 class Frac(Fraction):
     """Custom fraction type that supports nice printing."""
 
+    def __new__(cls, *args):
+        if len(args) == 2:
+            args = (int(args[0]), int(args[1]))
+        return super().__new__(cls, *args)
+
     def __str__(self):
         if NUMBERS == FRAC:
             if self.is_integer():
@@ -50,7 +55,7 @@ class Frac(Fraction):
             return str(round(float(self), ROUNDING))
 
     def limit_denominator(self, max_denominator = 1000000):
-        return Frac(super().limit_denominator(max_denominator))
+        return self.fix(Frac(super().limit_denominator(max_denominator)))
 
     @classmethod
     def fix(cls, fraction: Fraction):
@@ -253,24 +258,24 @@ class MDP:
         # print("F", str_list(F))
         # print("pol", policy)
         return V([
-            Frac(sum(M.P(s_,policy[s_],s) * F[s_] for s_ in M.S)).limit_denominator(DENOM_LIMIT)
+            Frac.fix(Frac(sum(M.P(s_,policy[s_],s) * F[s_] for s_ in M.S)).limit_denominator(DENOM_LIMIT))
             for s in M.S
         ])
 
     def PsiPolicyEq(M, policy: list[str], row: V, r: Frac) -> LowerSet:
         """Get Psi for one linear equation and policy."""
-        new_row = [ri for ri in row]
-        deduct = 0
+        new_row = V([Frac.fix(Frac(ri)) for ri in row])
+        deduct = Frac(0)
         for s in M.B:
             #print(s)
-            deduct += Frac.fix(new_row[s])
-            new_row[s] = 0
+            deduct += new_row[s]
+            new_row[s] = Frac(0)
         next_step = M.Theta(policy, new_row)
         #print("next step", str_list(next_step))
         # Now account for Phi setting bad states to 1
         
         # print("r", r, "deduct", deduct)
-        return next_step, Frac(r - deduct).limit_denominator(DENOM_LIMIT)
+        return next_step, Frac.fix(Frac(r - deduct).limit_denominator(DENOM_LIMIT))
 
     def PsiPolicy(M, policy: list, G: LowerSet) -> LowerSet:
         """Get Psi for this policy."""

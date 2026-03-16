@@ -121,9 +121,6 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
             assert_invariants(F, G, k, n, M, F_meet_conjuncts, do_propagate)
         iteration += 1
 
-        # print("F", F[k-1])
-        # print("Phi", M.Phi(F[k-1]))
-
         # POSITIVELY CONCLUSIVE
         for j in range(len(F)-1):
             #print(f"Fj {F[j]}, Fj+1 {F[j+1]}")
@@ -133,9 +130,11 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
                 if assert_:
                     assert M.Phi(F[j]) <= F[j] if assert_ else None
                 print("Inducitive invariant:", F[j]) if print_ else None
+                print_config_size(F,G)
                 return True
         # NEGATIVELY CONCLUSIVE
         if len(G) != 0 and G[0].is_empty():
+            print_config_size(F,G)
             return False
         # if Gk is not None:
         #     print("second", Phi(F[k-1], M) in Gk)
@@ -165,6 +164,10 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
             print("ZZ", ZZ) if print_ else None
             print("PROP", M.PROP) if print_ else None
             if assert_:
+                for z in ZZ.eqs[0][0] + [ZZ.eqs[0][1]]:
+                    assert type(z) == Frac
+                    assert type(z.numerator) == int
+                    assert type(z.denominator) == int
                 assert F[n-1] not in ZZ
                 assert M.PROP in ZZ
         
@@ -176,8 +179,12 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
             ZZ = De(F[k-1], Gk, M)
             #ZZ = Psi(Gk, M)
             print("ZZ", ZZ)  if print_ else None
-            print("Psi", M.Psi(Gk)) if print_ else None
+            # print("Psi", M.Psi(Gk)) if print_ else None
             if assert_:
+                for z in ZZ.eqs[0][0] + [ZZ.eqs[0][1]]:
+                    assert type(z) == Frac
+                    assert type(z.numerator) == int
+                    assert type(z.denominator) == int
                 assert F[k-1] not in ZZ if assert_ else None
                 assert M.Psi(Gk) <= ZZ if assert_ else None
 
@@ -198,6 +205,7 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
                     assert zh in Gk
                     assert M.Phi(meet([F[k-1], zh])) <= zh
                     for zi in zh:
+                        assert type(zi) == Frac
                         assert type(zi.numerator) == int
                         assert type(zi.denominator) == int
             
@@ -207,9 +215,17 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
                                 + [F_meet_conjuncts[j] for j in range(k+1, n)]
             G.pop(0)
 
+def print_config_size(F,G):
+    f = sum(len(Fi) for Fi in F)
+    g = sum(sum(len(eq[0]) for eq in Gi.eqs) for Gi in G)
+    print("Config size at the end:")
+    print("F", f)
+    print("G", g)
+
 def testAdjointPDRdown(M: MDP, heuristics, used_heuristic, propagate_= False, print_=True, assert_=True, loop_check=True):
     if not used_heuristic in heuristics:
         heuristics.append(used_heuristic)
+    print("Start")
     res = adjointPDRdown(M, propagate_, heuristics, used_heuristic, print_, assert_, loop_check)
     assert res is not None
     LAMBDA = M.PROP[0].limit_denominator(DENOM_LIMIT)
@@ -222,7 +238,7 @@ def testAdjointPDRdown(M: MDP, heuristics, used_heuristic, propagate_= False, pr
         print(f"lambda ({LAMBDA}) < expected result ({M.EXPECTED_RESULT}). res: {res}, correct.")
 
 # If it loops or assertion error or something, often you have to increase DENOM_LIMIT in helpers.py
-EXAMPLE = example_21(0.9999)
+EXAMPLE = ngrid_dtmc(20, lambda_=0.1)
 HEUR = []
 USED = Cb
-testAdjointPDRdown(EXAMPLE, HEUR, USED, propagate_=False, print_=False, assert_=True, loop_check=True)
+testAdjointPDRdown(EXAMPLE, HEUR, USED, propagate_=False, print_=False, assert_=False, loop_check=False)
