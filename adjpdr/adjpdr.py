@@ -87,7 +87,7 @@ def propagate(F, F_meet_conjuncts, M):
                     F_meet_conjuncts[i+1].append(F_j_prime)
     # We don't need to return, F is modified by reference.
 
-def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic: Callable):
+def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic: Callable, print_ : bool = True, assert_: bool = True):
     assert used_heuristic in heuristics
     q = len(M.S)
     states_so_far = []
@@ -101,13 +101,15 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
         # Administration, and assert the invariants.
         if (F,G) in states_so_far:
             print("Looped")
-            return None
+            # return None
         states_so_far.append((deepcopy(F),deepcopy(G)))
         n = len(F)
         k = n - len(G)
         Gk = G[0] if len(G) > 0 else None # index issues
-        print_progress(iteration, F, G, k, n, M)
-        assert_invariants(F, G, k, n, M, F_meet_conjuncts, do_propagate)
+        if print_:
+            print_progress(iteration, F, G, k, n, M)
+        if assert_:
+            assert_invariants(F, G, k, n, M, F_meet_conjuncts, do_propagate)
         iteration += 1
 
         # POSITIVELY CONCLUSIVE
@@ -116,8 +118,9 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
             #if len(F[j]) >= 1 and all([isclose(x, y, rel_tol=1e-4) for x, y in zip(F[j], F[j+1])]):
             #print(f"\t comparing: {F[j]} and {F[j+1]}")
             if len(F[j]) >= 1 and all([x == y for x, y in zip(F[j], F[j+1])]):
-                assert M.Phi(F[j]) <= F[j]
-                print("Inducitive invariant:", F[j])
+                if assert_:
+                    assert M.Phi(F[j]) <= F[j] if assert_ else None
+                print("Inducitive invariant:", F[j]) if print_ else None
                 return True
         # NEGATIVELY CONCLUSIVE
         if len(G) != 0 and G[0].is_empty():
@@ -127,7 +130,7 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
 
         # UNFLOLD (+ propagate)
         if len(G) == 0 and F[n-1] <= M.PROP:
-            print(f"Fn-1 {F[n-1]} <= PROP ==> unfold")
+            print(f"Fn-1 {F[n-1]} <= PROP ==> unfold") if print_ else None
             F.append(V.ones(q))
 
             # Propagate
@@ -136,35 +139,39 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
                 old_F = [[deepcopy(y) for y in x] for x in F]
                 propagate(F, F_meet_conjuncts, M)
                 if F != old_F:
-                    print("Old situation:")
-                    [print(f"F{i}", Fi) for i, Fi in enumerate(old_F)]
-                    print("Propagate did something!")
+                    print("Old situation:") if print_ else None
+                    [print(f"F{i}", Fi) for i, Fi in enumerate(old_F)] if print_ else None
+                    print("Propagate did something!") if print_ else None
                     #assert False # Just to warn me
-                    print()
+                    print() if print_ else None
 
         # CANDIDATE
         elif len(G) == 0 and not F[n-1] <= M.PROP:
-            print(f"Fn-1 {F[n-1]} > PROP ==> candidate")
+            print(f"Fn-1 {F[n-1]} > PROP ==> candidate") if print_ else None
             ZZ = Ca(M.PROP)
             G = [ZZ]
+            if assert_:
+                assert F[n-1] not in ZZ
+                assert M.PROP in ZZ
         
         # DECIDE
         elif len(G) > 0 and M.Phi(F[k-1]) not in Gk:
-            print(f"Phi(F_k-1) {M.Phi(F[k-1])} NOT in Gk {Gk} ==> decide")
+            print(f"Phi(F_k-1) {M.Phi(F[k-1])} NOT in Gk {Gk} ==> decide") if print_ else None
             # print("PHI: ", Phi(F[k-1]))
             # print('Gk: ', Gk)
             ZZ = De(F[k-1], Gk, M)
             #ZZ = Psi(Gk, M)
-            print("ZZ", ZZ)
-            print("Psi", M.Psi(Gk))
-            assert F[k-1] not in ZZ
-            assert M.Psi(Gk) <= ZZ
+            print("ZZ", ZZ)  if print_ else None
+            print("Psi", M.Psi(Gk)) if print_ else None
+            if assert_:
+                assert F[k-1] not in ZZ if assert_ else None
+                assert M.Psi(Gk) <= ZZ if assert_ else None
 
             G.insert(0, ZZ)
 
         # CONFLICT
         elif len(G) > 0 and M.Phi(F[k-1]) in Gk:
-            print(f"Phi(F_k-1) {M.Phi(F[k-1])} IN Gk {Gk} ==> conflict")
+            print(f"Phi(F_k-1) {M.Phi(F[k-1])} IN Gk {Gk} ==> conflict") if print_ else None
             # print("PHI: ", Phi(F[k-1]))
             # print('Gk: ', Gk)
             z = None
@@ -172,9 +179,10 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
                 zh = heuristic(F[k-1], Gk, M)
                 if heuristic == used_heuristic:
                     z = zh
-                print(heuristic.__name__, zh)
-                assert zh in Gk
-                assert M.Phi(meet([F[k-1], zh])) <= zh
+                print(heuristic.__name__, zh) if print_ else None
+                if assert_:
+                    assert zh in Gk
+                    assert M.Phi(meet([F[k-1], zh])) <= zh
             
             F = V([meet([Fj, z]) for (j, Fj) in enumerate(F) if j <= k]) + V([F[j] for j in range(k+1, n)])
             if do_propagate:
@@ -182,19 +190,21 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
                                 + [F_meet_conjuncts[j] for j in range(k+1, n)]
             G.pop(0)
 
-def testAdjointPDRdown(M: MDP, heuristics, used_heuristic):
-    res = adjointPDRdown(M, False, heuristics, used_heuristic)
+def testAdjointPDRdown(M: MDP, heuristics, used_heuristic, propagate_= False, print_=True, assert_=True):
+    if not used_heuristic in heuristics:
+        heuristics.append(used_heuristic)
+    res = adjointPDRdown(M, propagate_, heuristics, used_heuristic, print_, assert_)
     assert res is not None
-    LAMBDA = M.PROP[0].limit_denominator(1000)
+    LAMBDA = M.PROP[0].limit_denominator(DENOM_LIMIT)
     
-    if LAMBDA >= Frac(M.EXPECTED_RESULT).limit_denominator(1000):
+    if LAMBDA >= Frac(M.EXPECTED_RESULT).limit_denominator(DENOM_LIMIT):
         assert res
         print(f"lambda ({LAMBDA}) >= expected result ({M.EXPECTED_RESULT}). res: {res}, correct.")
     else:
         assert not res
         print(f"lambda ({LAMBDA}) < expected result ({M.EXPECTED_RESULT}). res: {res}, correct.")
 
-EXAMPLE = example_23()
-HEUR = [Cs,Cb]
-USED = Cs 
-testAdjointPDRdown(EXAMPLE, HEUR, USED)
+EXAMPLE = grid()
+HEUR = [Cb, C01, COpt, Cs]
+USED = Cs
+testAdjointPDRdown(EXAMPLE, HEUR, USED, propagate_=False, print_=True, assert_=False)

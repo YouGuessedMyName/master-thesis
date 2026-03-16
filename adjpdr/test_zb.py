@@ -25,7 +25,31 @@ def test_generators():
             # print("own_impl", own_impl)
         assert equal
 
-test_generators()
+def test_meet():
+    for _ in range(TESTS):
+        r = V.random(N)
+        r0 = Frac(random.uniform(0,1)).limit_denominator(DENOM_LIMIT)
+        v = V.random(N)
+
+        # Counterexample
+        # r = V([Frac(3/4), Frac(0), Frac(0), Frac(1/4)])
+        # r0 = Frac(1/4)
+        # v = V(V.zeroes(N-1) + [Frac(1)])
+        slow = meet_Zk_slow(r, r0, v)
+        fast = meet_Zk_fast(r, r0, v)
+        equal = slow == fast
+        if not equal:
+            print("r", r)
+            print("r0", r0)
+            print('v', v)
+            print("slow", slow)
+            print("fast", fast)
+            # print("gens", [str(w) for w in generator_set(r, r0)])
+            # print("tight", [str(w) for w in tight(generator_set(r,r0), r, r0)])
+            # print("meet", meet(tight(generator_set(r,r0), r, r0)))
+        assert equal
+
+test_meet()
 
 # for _ in range(TESTS):
 #     Gk = LowerSet([([Frac(random.uniform(0,1)).limit_denominator(100) for _ in range(N)], Frac(random.uniform(0,1)).limit_denominator(10))])

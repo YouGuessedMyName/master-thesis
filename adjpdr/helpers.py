@@ -53,6 +53,10 @@ class Frac(Fraction):
 
 class V(list):
     """Custom Vector datatype. Supports the desired functionality of <=, and nice printing."""
+
+    def __add__(self, value):
+        return V(super().__add__(value))
+
     def __le__(x, y):
         if len(x) == 0:
             return True
