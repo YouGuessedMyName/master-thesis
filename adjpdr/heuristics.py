@@ -46,7 +46,7 @@ def C01(F:V, Gk:LowerSet, M: MDP) -> V:
     phi_applied = M.Phi(F)
     return V([
         ceil(cb[s]) if r[s] == 0 and len(meetZk) != 0
-        else phi_applied[s]
+        else cb[s]
         for s in range(len(r))
     ])
 

@@ -98,7 +98,10 @@ def meet_Zk_fast(r, r0, v):
 
         others = [s for s in T if s != s_star]
 
-        for assign in product([0,1], repeat=len(others)):
+        for assign in product([0,1], repeat=len(others)): 
+            # I think an even better algorithm is possible if you don't just loop over assignments
+            # but instead, you find the lowest (non-zero) d* possible by subset sum solver.
+            # Maybe use something like this? https://colab.research.google.com/github/europeanplaice/subset_sum/blob/main/python/python_subset_sum.ipynb
             d = V.zeroes(L)
             sum_fixed = 0 # The sum that you get from the other linear factors already
 
