@@ -1,13 +1,18 @@
-from helpers import *
+from adjpdr.helpers import *
 import cdd
 from z3 import Real, Optimize, Sum
-import spaces
+import adjpdr.spaces
 
 def Ca(p: V) -> LowerSet:
     return downarrow(p)
 
 def De(F:V, Gk:LowerSet, M: MDP) -> LowerSet:
     policy = M.PhiPolicyArgMax(F)
+    if M.has_multiple_policies():
+        try:
+            print("\tPolicy used to compute ZZ: ", [a.label for a in policy])
+        except:
+            print("\tPolicy used to compute ZZ: ", policy)
     return M.PsiPolicy(policy, Gk)
 
 def Cs(F: V, _:LowerSet, M: MDP) -> V:
@@ -16,7 +21,7 @@ def Cs(F: V, _:LowerSet, M: MDP) -> V:
 def Cb_slow(F:V, Gk:LowerSet, M: MDP) -> V:
     assert len(Gk) == 1
     r, r0 = Gk.eqs[0]
-    meetZk = spaces.meet_Zk_slow(r, r0, M.Phi(F))
+    meetZk = adjpdr.spaces.meet_Zk_slow(r, r0, M.Phi(F))
     phi_applied = M.Phi(F)
     return V([
         meetZk[s] if r[s] != 0 and len(meetZk) != 0
@@ -29,7 +34,7 @@ def Cb(F:V, Gk:LowerSet, M: MDP, meetZk=None) -> V:
     if meetZk == None:
         meetZk = []
     r, r0 = Gk.eqs[0]
-    for w in spaces.meet_Zk_fast(r, r0, M.Phi(F)):
+    for w in adjpdr.spaces.meet_Zk_fast(r, r0, M.Phi(F)):
         meetZk.append(w)
     phi_applied = M.Phi(F)
     return V([

@@ -1,6 +1,6 @@
 """Functions that are used in the conflict heuristic that involve solution spaces for linear equations."""
 import cdd
-from helpers import *
+from adjpdr.helpers import *
 
 def generator_set_cdd(r: V, r0: Frac) -> list[V]:
     """Get the tight generator set using cdd, for the set { v : row*v <= r }."""
@@ -111,13 +111,15 @@ def meet_Zk_fast(r, r0, v):
 
             d_star = (r0 - sum_fixed)/Frac.fix(r[s_star]) # The maximum amount that you can still assign to s* to be within the cube.
             if v[s_star] <= d_star <= 1:
-                # For the elments of Z, we assign zero wherever possible without violating the constraint on v, otherwise a 1.
+                # For the elments of Z (with zero coefficients), we assign zero wherever possible without violating the constraint on v, otherwise a 1.
+                # This is also inefficient to do this the whole time, we only need to do this once really.
+                # It does not matter for the tightness check because they are all 0 anyway.
                 for i in Z:
                     if v[i] > 0:
                         d[i] = Frac(1)
                 d[s_star] = Frac(d_star).limit_denominator(DENOM_LIMIT)
                 if not d in res and is_tight(r,r0,d) and v <= d:
-                    res.append(d)
+                    res.append(d) # store a single vector and keep taking the meet instead!
     #print("Zk overapprox!!!", [str(w) for w in res])
     return meet(res)
             

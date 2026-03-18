@@ -1,4 +1,4 @@
-from helpers import Frac, MDP, V, DENOM_LIMIT
+from adjpdr.helpers import Frac, MDP, V, DENOM_LIMIT
 import stormvogel as sv
 
 def example_21(lambda_=1/4):
@@ -200,7 +200,7 @@ def problematic(lambda_):
 
 def two_d(lambda_):
     DELTA = {
-        0: [(1, 1)],
+        0: [(0.9, 0), (0.1, 1)],
         1: [(1, 1)],
     }
     delta = lambda s : DELTA[s]

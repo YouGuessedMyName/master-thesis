@@ -1,6 +1,6 @@
-from heuristics import *
+from adjpdr.heuristics import *
 from copy import deepcopy
-from examples import *
+from adjpdr.examples import *
 
 def assert_invariants(F, G, k, n, M: MDP, F_meet_conjuncts, do_propagate):
     for Fi in F: # No accidental regular lists
@@ -82,7 +82,7 @@ def print_progress(iteration, F, G, k, n, M):
         print("G")
     else:
         print()
-        print("F_k-1", F[k-1])
+        #print("F_k-1", F[k-1])
         #print("Phi(F_k-1)", str_list(Phi(F[k-1], M)))
 
 def propagate(F, F_meet_conjuncts, M):
@@ -99,6 +99,7 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
     assert used_heuristic in heuristics
     q = len(M.S)
     states_so_far = []
+    heuristics_so_far = {}
     F = [V.empty(), V.zeroes(q), V.ones(q)]
     F_meet_conjuncts = [[V.empty()], [V.zeroes(q)], [V.ones(q)]]
     G = []
@@ -109,8 +110,8 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
         # Administration, and assert the invariants.
         if loop_check:
             if (F,G) in states_so_far:
-                print("Looped")
-                return None
+                print(f"Looped after {iteration} iterations")
+                return None, states_so_far, heuristics_so_far
             states_so_far.append((F.copy(), G.copy()))
         n = len(F)
         k = n - len(G)
@@ -129,19 +130,21 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
             if len(F[j]) >= 1 and all([x == y for x, y in zip(F[j], F[j+1])]):
                 if assert_:
                     assert M.Phi(F[j]) <= F[j] if assert_ else None
+                print(f"After {iteration} iterations")
                 print("Inducitive invariant:", F[j]) if print_ else None
                 print_config_size(F,G)
-                return True
+                return True, states_so_far, heuristics_so_far
         # NEGATIVELY CONCLUSIVE
         if len(G) != 0 and G[0].is_empty():
             print_config_size(F,G)
-            return False
+            print(f"After {iteration} iterations")
+            return False, states_so_far, heuristics_so_far
         # if Gk is not None:
         #     print("second", Phi(F[k-1], M) in Gk)
 
         # UNFLOLD (+ propagate)
         if len(G) == 0 and F[n-1] <= M.PROP:
-            print(f"Fn-1 {F[n-1]} <= PROP ==> unfold") if print_ else None
+            print(f"\tFn-1 {F[n-1]} <= PROP ==> unfold") if print_ else None
             F.append(V.ones(q))
 
             # Propagate
@@ -158,11 +161,10 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
 
         # CANDIDATE
         elif len(G) == 0 and not F[n-1] <= M.PROP:
-            print(f"Fn-1 {F[n-1]} > PROP ==> candidate") if print_ else None
+            print(f"\tFn-1 {F[n-1]} > PROP ==> candidate") if print_ else None
             ZZ = Ca(M.PROP)
             G = [ZZ]
-            print("ZZ", ZZ) if print_ else None
-            print("PROP", M.PROP) if print_ else None
+            print("\tZZ", ZZ) if print_ else None
             if assert_:
                 for z in ZZ.eqs[0][0] + [ZZ.eqs[0][1]]:
                     assert type(z) == Frac
@@ -173,12 +175,12 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
         
         # DECIDE
         elif len(G) > 0 and M.Phi(F[k-1]) not in Gk:
-            print(f"Phi(F_k-1) {M.Phi(F[k-1])} NOT in Gk {Gk} ==> decide") if print_ else None
+            print(f"\tPhi(F_k-1) {M.Phi(F[k-1])} NOT in Gk {Gk} ==> decide") if print_ else None
             # print("PHI: ", Phi(F[k-1]))
             # print('Gk: ', Gk)
             ZZ = De(F[k-1], Gk, M)
             #ZZ = Psi(Gk, M)
-            print("ZZ", ZZ)  if print_ else None
+            print("\tZZ", ZZ)  if print_ else None
             # print("Psi", M.Psi(Gk)) if print_ else None
             if assert_:
                 for z in ZZ.eqs[0][0] + [ZZ.eqs[0][1]]:
@@ -192,15 +194,19 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
 
         # CONFLICT
         elif len(G) > 0 and M.Phi(F[k-1]) in Gk:
-            print(f"Phi(F_k-1) {M.Phi(F[k-1])} IN Gk {Gk} ==> conflict") if print_ else None
+            print(f"\tPhi(F_k-1) {M.Phi(F[k-1])} IN Gk {Gk} ==> conflict") if print_ else None
             # print("PHI: ", Phi(F[k-1]))
             # print('Gk: ', Gk)
             z = None
+            if loop_check:
+                heuristics_so_far[iteration] = {}
             for heuristic in heuristics:
                 zh = heuristic(F[k-1], Gk, M)
                 if heuristic == used_heuristic:
                     z = zh
-                print(heuristic.__name__, zh) if print_ else None
+                print("\t" + heuristic.__name__, zh) if print_ else None
+                if loop_check:
+                    heuristics_so_far[iteration][heuristic.__name__] = zh
                 if assert_:
                     assert zh in Gk
                     assert M.Phi(meet([F[k-1], zh])) <= zh
@@ -226,7 +232,7 @@ def testAdjointPDRdown(M: MDP, heuristics, used_heuristic, propagate_= False, pr
     if not used_heuristic in heuristics:
         heuristics.append(used_heuristic)
     print("Start")
-    res = adjointPDRdown(M, propagate_, heuristics, used_heuristic, print_, assert_, loop_check)
+    res, states_list, heuristics_list = adjointPDRdown(M, propagate_, heuristics, used_heuristic, print_, assert_, loop_check)
     assert res is not None
     LAMBDA = M.PROP[0].limit_denominator(DENOM_LIMIT)
     
@@ -236,9 +242,10 @@ def testAdjointPDRdown(M: MDP, heuristics, used_heuristic, propagate_= False, pr
     else:
         assert not res
         print(f"lambda ({LAMBDA}) < expected result ({M.EXPECTED_RESULT}). res: {res}, correct.")
+    return res, states_list, heuristics_list
 
 # If it loops or assertion error or something, often you have to increase DENOM_LIMIT in helpers.py
-EXAMPLE = ngrid_dtmc(20, lambda_=0.1)
-HEUR = []
+EXAMPLE = ngrid_dtmc(4, lambda_=0.2)
+HEUR = [Cb,COpt,C01,Cs]
 USED = Cb
-testAdjointPDRdown(EXAMPLE, HEUR, USED, propagate_=False, print_=False, assert_=False, loop_check=False)
+# testAdjointPDRdown(EXAMPLE, HEUR, USED, propagate_=False, print_=True, assert_=False, loop_check=False)

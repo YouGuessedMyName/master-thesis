@@ -221,6 +221,9 @@ class MDP:
     PROP: list[Frac]
     EXPECTED_RESULT: float
 
+    def has_multiple_policies(self) -> bool:
+        return any([len(self.av(s)) > 1 for s in self.S])
+
     def possible_policies(self) -> list[list]:
         """Enumerate all possible policies on this MDP."""
         return [list(t) for t in product(*[self.av(s) for s in self.S])]
