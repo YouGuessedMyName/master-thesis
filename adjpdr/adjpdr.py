@@ -130,14 +130,14 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
             if len(F[j]) >= 1 and all([x == y for x, y in zip(F[j], F[j+1])]):
                 if assert_:
                     assert M.Phi(F[j]) <= F[j] if assert_ else None
-                print(f"After {iteration} iterations")
+                print(f"After {iteration-1} iterations")
                 print("Inducitive invariant:", F[j]) if print_ else None
                 print_config_size(F,G)
                 return True, states_so_far, heuristics_so_far
         # NEGATIVELY CONCLUSIVE
         if len(G) != 0 and G[0].is_empty():
             print_config_size(F,G)
-            print(f"After {iteration} iterations")
+            print(f"After {iteration-1} iterations")
             return False, states_so_far, heuristics_so_far
         # if Gk is not None:
         #     print("second", Phi(F[k-1], M) in Gk)
@@ -178,7 +178,7 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
             print(f"\tPhi(F_k-1) {M.Phi(F[k-1])} NOT in Gk {Gk} ==> decide") if print_ else None
             # print("PHI: ", Phi(F[k-1]))
             # print('Gk: ', Gk)
-            ZZ = De(F[k-1], Gk, M)
+            ZZ = De(F[k-1], Gk, M, print_)
             #ZZ = Psi(Gk, M)
             print("\tZZ", ZZ)  if print_ else None
             # print("Psi", M.Psi(Gk)) if print_ else None

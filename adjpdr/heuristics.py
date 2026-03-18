@@ -6,9 +6,9 @@ import adjpdr.spaces
 def Ca(p: V) -> LowerSet:
     return downarrow(p)
 
-def De(F:V, Gk:LowerSet, M: MDP) -> LowerSet:
+def De(F:V, Gk:LowerSet, M: MDP, print_policy: bool = False) -> LowerSet:
     policy = M.PhiPolicyArgMax(F)
-    if M.has_multiple_policies():
+    if print_policy and M.has_multiple_policies():
         try:
             print("\tPolicy used to compute ZZ: ", [a.label for a in policy])
         except:
