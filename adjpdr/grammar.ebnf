@@ -1,36 +1,50 @@
-start: model_type constant* module* label*
+start: NAME constants module labels
 
-model_type: "dtmc"
-
+constants: constant*
 constant: "const" "int" NAME "=" INT ";"
-module: "module" NAME var* trans* "endmodule"
 
-var: NAME ":" "[" expr ".." expr "]" branches ";"
-trans: "[]" guard "->" branches ";"
+module: "module" NAME vars commands "endmodule"
 
-branches: [branch ("+" branch)*]
-branch: NUMBER ":" branchExpr
+vars: var*
+var: NAME ":" "[" expr ".." expr "]" ";"
 
-expr: expr "+" term   -> add
+commands: command*
+command: "[]" guards "->" branches ";"
+
+guards: bool_term ("&" bool_term)*
+
+branches: branch ("+" branch)*
+
+branch: expr ":" updates
+
+updates: update ("&" update)*
+update: "(" NAME "'" "=" expr ")"
+
+labels: label*
+label: "label" "\"" NAME "\"" "=" guards ";"
+
+?bool_term: expr "<" expr            -> lt
+          | expr "=" expr            -> eq
+          | expr
+
+?expr: expr "+" term   -> add
      | expr "-" term   -> sub
      | term
 
-term: term "*" factor -> mul
+?term: term "*" factor -> mul
      | term "/" factor -> div
      | factor
 
-factor: NUMBER
+?factor: INT
        | NAME
        | "(" expr ")"
 
 %import common.CNAME -> NAME
 %import common.NUMBER
-
+%import common.INT
+%import common.ESCAPED_STRING -> STRING
 %import common.NEWLINE
 %import common.WS_INLINE
-%import common.ESCAPED_STRING   -> STRING
-%import common.INT
 
-# Ignore whitespaces and newlines
 %ignore WS_INLINE
 %ignore NEWLINE
