@@ -1,0 +1,36 @@
+start: model_type constant* module* label*
+
+model_type: "dtmc"
+
+constant: "const" "int" NAME "=" INT ";"
+module: "module" NAME var* trans* "endmodule"
+
+var: NAME ":" "[" expr ".." expr "]" branches ";"
+trans: "[]" guard "->" branches ";"
+
+branches: [branch ("+" branch)*]
+branch: NUMBER ":" branchExpr
+
+expr: expr "+" term   -> add
+     | expr "-" term   -> sub
+     | term
+
+term: term "*" factor -> mul
+     | term "/" factor -> div
+     | factor
+
+factor: NUMBER
+       | NAME
+       | "(" expr ")"
+
+%import common.CNAME -> NAME
+%import common.NUMBER
+
+%import common.NEWLINE
+%import common.WS_INLINE
+%import common.ESCAPED_STRING   -> STRING
+%import common.INT
+
+# Ignore whitespaces and newlines
+%ignore WS_INLINE
+%ignore NEWLINE

@@ -1,0 +1,12 @@
+dtmc
+
+const int N = 4;
+
+module die
+    x : [0..N-1];
+
+    [] x=N-1 -> 1: (x'=x);
+    [] x<N-1 -> 1: (x'=x+1);
+endmodule
+
+label "bad" = x = N-1;
