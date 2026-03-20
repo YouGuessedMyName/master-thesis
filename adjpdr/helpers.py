@@ -60,6 +60,13 @@ class Frac(Fraction):
     @classmethod
     def fix(cls, fraction: Fraction):
         return cls(int(fraction.numerator), int(fraction.denominator))
+    
+    @staticmethod
+    def sum(l: Collection["Frac"]):
+        res = Frac(0)
+        for li in l:
+            res += li
+        return res.limit_denominator(DENOM_LIMIT)
 
 class V(list):
     """Custom Vector datatype. Supports the desired functionality of <=, and nice printing."""

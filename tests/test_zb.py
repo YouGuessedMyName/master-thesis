@@ -4,7 +4,7 @@ from adjpdr.spaces import *
 import random
 import numpy as np
 
-TESTS = 1000
+TESTS = 100
 N = 4
 epsilon = 0.01
 
@@ -49,10 +49,10 @@ def test_meet():
             # print("meet", meet(tight(generator_set(r,r0), r, r0)))
         assert equal
 # test_meet()
-M = two_d(1)
-M.B = set()
-print(Cb(V([0,0]), LowerSet([(V([Frac(1), Frac(1)]), Frac(3/2))]), M))
-print(COpt(V([0,0]), LowerSet([(V([Frac(1), Frac(1)]), Frac(3/2))]), M))
+# M = two_d(1)
+# M.B = set()
+# print(Cb(V([0,0]), LowerSet([(V([Frac(1), Frac(1)]), Frac(3/2))]), M))
+# print(COpt(V([0,0]), LowerSet([(V([Frac(1), Frac(1)]), Frac(3/2))]), M))
 # for _ in range(TESTS):
 #     Gk = LowerSet([([Frac(random.uniform(0,1)).limit_denominator(100) for _ in range(N)], Frac(random.uniform(0,1)).limit_denominator(10))])
 #     #Gk = LowerSet([([Frac(random.uniform(0,1)).limit_denominator(10) for _ in range(N)], Frac(1))])

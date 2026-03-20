@@ -13,6 +13,14 @@ with open("adjpdr/grammar.ebnf", "r") as f:
 
 prism_parser = Lark(GRAMMAR, start="start")
 
+def z3expr(x: int | z3.ArithRef):
+    if type(x) == int:
+        return z3.IntVal(x)
+    return x
+
+def simpl_subst(e, cname, cval):
+    return z3.simplify(z3.substitute(z3expr(e), [(z3.Int(cname), z3.IntVal(cval))]))
+
 @dataclass
 class Update:
     variable: z3.Int
@@ -21,17 +29,33 @@ class Update:
 @dataclass
 class Command:
     guards: set[z3.BoolRef]
-    branches: set[tuple[Frac, Update]]
+    branches: set[tuple[Frac, list[Update]]]
 
 @dataclass
 class Module:
     name: str
     constants: dict[z3.Int, int]
-    variables: dict[z3.Int, tuple[z3.Int, z3.Int]]
+    variables: dict[z3.Int, tuple[z3.IntVal, z3.IntVal]]
     commands: set[Command]
     labels: dict[str, set[z3.BoolRef]]
     prop: z3.BoolRef
     expected_result: float
+
+    def clear_constants(self):
+        for cname, cval in self.constants.items():
+            for name, (lb, ub) in self.variables.items():
+                self.variables[name] = simpl_subst(lb, cname, cval), simpl_subst(ub, cname, cval)
+            for c in self.commands:
+                c.guards = set(simpl_subst(e, cname, cval) for e in c.guards)
+                new_branches = []
+                for val, updates in c.branches:
+                    new_branches.append((val,
+                        [Update(simpl_subst(update.variable, cname, cval), simpl_subst(update.new_val, cname, cval)) 
+                            for update in updates]))
+            for lname, guards in self.labels.items():
+                self.labels[lname] = [simpl_subst(e, cname, cval) for e in guards]
+            if self.prop is not None:
+                self.prop = simpl_subst(self.prop,cname,cval)
 
     def set_property(self, bad_label: str = "bad"):
         self.prop = z3.Not(z3.And(self.labels[bad_label]))
