@@ -18,7 +18,7 @@ branches: branch ("+" branch)*
 branch: expr ":" updates
 
 updates: update ("&" update)*
-update: "(" NAME "'" "=" expr ")"
+update: "(" VAR "'" "=" expr ")"
 
 labels: label*
 label: "label" "\"" NAME "\"" "=" guards ";"
@@ -36,8 +36,10 @@ label: "label" "\"" NAME "\"" "=" guards ";"
      | factor
 
 ?factor: INT
-       | NAME
+       | VAR
        | "(" expr ")"
+
+VAR: NAME # Var becomes a z3 int whereas name becomes a str
 
 %import common.CNAME -> NAME
 %import common.NUMBER

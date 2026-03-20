@@ -1,9 +1,13 @@
-from adjpdr.prism import *
+from sym_adjpdr.prism import *
 
-with open("prism/grid.prism", "r") as f:
+PATH = "prism/line.prism"
+
+with open(PATH, "r") as f:
     PRISM = f.read()
 
 tree = prism_parser.parse(PRISM)
 # print(tree.pretty())
-ast = PrismTransformer().transform(tree)
-print_ast(ast)
+module: Module = PrismTransformer().transform(tree)
+module.set_property()
+module.set_expected_result(PATH)
+print_module(module)

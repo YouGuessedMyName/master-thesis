@@ -1,5 +1,9 @@
+"""Parsing/lexing and AST for PRISM."""
 from dataclasses import dataclass
+from typing import Collection
 from adjpdr.helpers import Frac
+import stormvogel as sv
+import stormpy
 
 from lark import Lark, Transformer
 import z3
@@ -22,10 +26,21 @@ class Command:
 @dataclass
 class Module:
     name: str
-    constants: dict[str, int]
+    constants: dict[z3.Int, int]
     variables: dict[z3.Int, tuple[z3.Int, z3.Int]]
     commands: set[Command]
     labels: dict[str, set[z3.BoolRef]]
+    prop: z3.BoolRef
+    expected_result: float
+
+    def set_property(self, bad_label: str = "bad"):
+        self.prop = z3.Not(z3.And(self.labels[bad_label]))
+        
+    def set_expected_result(self, prism_path:str, bad_label: str = "bad"):
+        prism_program = stormpy.parse_prism_program(prism_path)
+        sv_model = sv.stormpy_utils.from_prism(prism_program)
+        self.expected_result = sv.model_checking(sv_model, f'Pmax=? [F "{bad_label}"]').get_result_of_state(0)
+        
 
 class PrismTransformer(Transformer):
     def start(self, items):
@@ -43,7 +58,7 @@ class PrismTransformer(Transformer):
     # Module
     def module(self, items):
         name, vars, commands = items
-        return Module(name, {}, vars, commands, {})
+        return Module(name, None, vars, commands, None, None, None)
     def vars(self, items):
         return {k:v for k,v in items}
     def var(self, items):
@@ -91,7 +106,9 @@ class PrismTransformer(Transformer):
     def INT(self, t):
         return int(t)
     def NAME(self, t):
-        return z3.Int(t)
+        return str(t)
+    def VAR(self, t):
+        return z3.Int(t[0])
     def add(self, items):
         return items[0] + items[1]
     def sub(self, items):
@@ -101,11 +118,14 @@ class PrismTransformer(Transformer):
     def div(self, items):
         return items[0] / items[1]
 
-def print_ast(module: Module):
-    print(module.name)
+def print_module(module: Module):
+    print([module.name])
     print("Constants:", module.constants)
     print("Vars:", module.variables)
     print("Commands:")
     for command in module.commands:
         print(command)
     print("Labels", module.labels)
+    print("Prop", module.prop)
+    print("Expected result", module.expected_result)
+
