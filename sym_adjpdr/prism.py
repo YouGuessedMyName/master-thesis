@@ -35,7 +35,7 @@ class Command:
 class Module:
     name: str
     constants: dict[z3.Int, int]
-    variables: dict[z3.Int, tuple[z3.IntVal, z3.IntVal]]
+    variables: dict[str, tuple[z3.IntVal, z3.IntVal]]
     commands: set[Command]
     labels: dict[str, set[z3.BoolRef]]
     prop: z3.BoolRef

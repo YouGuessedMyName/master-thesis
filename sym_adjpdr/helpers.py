@@ -3,10 +3,9 @@ from dataclasses import dataclass
 from adjpdr.helpers import Frac
 from sym_adjpdr.prism import *
 import z3
+from itertools import product
 
-DENOM_LIMIT = 1e4
-
-type State = list[tuple[str, int]]
+type State = dict[str, int]
 
 @dataclass
 class Frame:
@@ -22,13 +21,37 @@ class Frame:
         self.module = module
 
     def f(self, s: State) -> Frac:
-        return z3.simplify(z3.substitute(self.z3_frame, [(z3.Int(name), z3.IntVal(val)) for name, val in s]))
+        res = z3.simplify(z3.substitute(self.z3_frame, [(z3.Int(name), z3.IntVal(val)) for name, val in s.items()]))
+        return Frac(res.py_value()).limit_denominator()
     
-    def __le__(self, other: "Frame"):
+    def __getitem__(self, s: State):
+        return self.f(s)
+    
+    def __le__(self, other: "Frame") -> bool:
         """self <= other, iff for all states, other is at least as great as self."""
-        s = z3.Solver()
-        s.add(self.z3_frame > other.z3_frame)
+        sol = z3.Solver()
+        sol.add(self.z3_frame > other.z3_frame)
         for vname, (lb, ub) in self.module.variables.items():
-            s.add(z3.Int(vname) >= lb)
-            s.add(z3.Int(vname) <= ub)
-        return s.check() == z3.unsat
+            sol.add(z3.Int(vname) >= lb)
+            sol.add(z3.Int(vname) <= ub)
+        return sol.check() == z3.unsat
+    
+@dataclass
+class FrameSet:
+    """A set of frames satisfying a list of linear inequalties."""
+    eqs: list[tuple[z3.ArithRef, Frac]]
+    module: Module
+
+    def contains_slow(self, F: Frame) -> bool:
+        for (r, r0) in self.eqs:
+            var_names = [vname for vname in self.module.variables]
+            prod = list(product(*[range(lb.py_value(),ub.py_value()+1) for _vname, (lb,ub) in self.module.variables.items()]))
+            states = [{var_names[i]: val for i, val in enumerate(vals)} for vals in prod]
+            sm = sum([Frac.fix(r[s]) * F[s] for s in states])
+            if sm > r0:
+                return False
+        return True
+    
+    def __contains__(self, F: Frame) -> bool:
+        return self.contains_slow(F)
+        
