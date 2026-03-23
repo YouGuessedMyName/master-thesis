@@ -2,10 +2,13 @@ from dataclasses import dataclass
 
 from adjpdr.helpers import Frac
 from sym_adjpdr.prism import *
+from sym_adjpdr.z3_to_isl import *
 import z3
 from itertools import product
 
 type State = dict[str, int]
+
+# TODO do we want to assume that the pieces of a frame never overlap? Let's assume that for now.
 
 @dataclass
 class Frame:
@@ -39,7 +42,7 @@ class Frame:
 @dataclass
 class FrameSet:
     """A set of frames satisfying a list of linear inequalties."""
-    eqs: list[tuple[z3.ArithRef, Frac]]
+    eqs: list[tuple[Frame, Frac]]
     module: Module
 
     def contains_slow(self, F: Frame) -> bool:
@@ -52,6 +55,45 @@ class FrameSet:
                 return False
         return True
     
+    @staticmethod
+    def __count_region(expr, variables, bounds) -> int:
+        s = z3_to_isl_set(expr, variables, bounds)
+        return s.count_val().to_python()
+    
     def __contains__(self, F: Frame) -> bool:
-        return self.contains_slow(F)
-        
+
+        var_names = list(self.module.variables.keys())
+        bounds = {
+            v: (lb.py_value(), ub.py_value())
+            for v, (lb, ub) in self.module.variables.items()
+        }
+
+        for (r, r0) in self.eqs:
+            total = 0
+
+            for (ri_guard, ri_val) in r.frame:
+                for (Fj_guard, Fj_val) in F.frame:
+
+                    guard = z3.simplify(z3.And(ri_guard, Fj_guard))
+
+                    # skip infeasible regions early with Z3
+                    s = z3.Solver()
+                    s.add(guard)
+                    for v, (lb, ub) in bounds.items():
+                        x = z3.Int(v)
+                        s.add(x >= lb, x <= ub)
+
+                    if s.check() == z3.unsat:
+                        continue
+
+                    count = self.__count_region(guard, var_names, bounds)
+
+                    total += count * (ri_val * Fj_val)
+
+                    if total > r0:
+                        return False
+
+            if total > r0:
+                return False
+
+        return True

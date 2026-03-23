@@ -1,5 +1,7 @@
 from sym_adjpdr.helpers import *
 from sym_adjpdr.prism import *
+from sym_adjpdr.z3_to_isl import *
+import islpy as isl
 
 PATH = "prism/line.prism"
 with open(PATH, "r") as f:
@@ -56,3 +58,11 @@ def test_frame_set():
 
     y = z3.Int("y")
     # TODO extend test!
+
+def test_z3_to_islpy():
+    x = z3.Int("x")
+    e = z3.And(x >= 1, x >= 2)
+    e_isl = z3_to_isl_set(e, ["x"], {"x": [0,5]})
+    assert str(e_isl) == "{ [x] : 2 <= x <= 5 }"
+
+    y = z3.Int("")
