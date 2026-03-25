@@ -6,6 +6,9 @@ from typing import Iterator
 import islpy as isl
 from itertools import product
 
+# LP solver
+from scipy.optimize import linprog
+
 type State = dict[str, int]
 type Vars = dict[str, tuple[int, int]] # Represents a variable with a name and a domain.
 
@@ -70,8 +73,11 @@ class Frame:
         # fill remaining domain with 0
         remaining = domain.subtract(used)
         if not remaining.is_empty():
-            zero = isl.PwAff.read_from_str(ctx, f"{{ {remaining} -> 0 }}")
-            pw = zero if pw is None else pw.union_max(zero)
+            space = remaining.get_space()
+            aff = isl.Aff.zero_on_domain(space)
+            pw_piece = isl.PwAff.from_aff(aff).intersect_domain(remaining)
+            
+            pw = pw_piece if pw is None else pw.union_max(pw_piece)
 
         return Frame(pw, domain, variables)
 
@@ -122,16 +128,16 @@ class Frame:
     # ---------- FAST dot product ----------
     @staticmethod
     def dot(f: "Frame", g: "Frame") -> Fraction:
-        # multiply → PwQPolynomial
         prod = f.pw * g.pw
-
-        # restrict domain
         prod = prod.intersect_domain(f.domain)
 
-        # sum over domain
-        total = prod.sum()
+        total = Fraction(0)
+        for sset, aff in prod.get_pieces():
+            count = sset.count_val().to_python()
+            val = aff.get_constant_val().to_python()
+            total += count * val
 
-        return Fraction(total.to_python()).limit_denominator()
+        return total
 
     # ---------- slow dot ----------
     @staticmethod
@@ -140,3 +146,78 @@ class Frame:
         for s in enumerate_states(f.variables):
             total += f.eval(s) * g.eval(s)
         return total
+
+# ---------- FrameSet ----------
+
+@dataclass
+class FrameSet:
+    eqs: list[tuple[Frame, Fraction]]  # list of (Frame r, Fraction r0)
+    variables: Vars
+
+    # ---------- membership ----------
+    def __contains__(self, F: Frame) -> bool:
+        for (r, r0) in self.eqs:
+            total = Frame.dot(r, F)
+            if total > r0:
+                return False
+        return True
+
+    # ---------- slow membership ----------
+    def contains_slow(self, F: Frame) -> bool:
+        for (r, r0) in self.eqs:
+            total = Frame.dot_slow(r, F)
+            if total > r0:
+                return False
+        return True
+
+    # ---------- subset inclusion ----------
+    def __le__(self, other: "FrameSet") -> bool:
+        # build region partition
+        regions = []
+        for (r, _) in self.eqs:
+            for (R, _) in r.pw.get_pieces():
+                regions.append(R)
+
+        # counts
+        counts = [r.count_val().to_python() for r in regions]
+
+        n = len(regions)
+
+        for (q, q0) in other.eqs:
+            c = []
+            for R in regions:
+                val = 0
+                for (Qreg, qv) in q.pw.get_pieces():
+                    if not R.intersect(Qreg).is_empty():
+                        val = qv.get_constant_val().to_python()
+                        break
+                c.append(val)
+
+            A = []
+            b = []
+            for (r, r0) in self.eqs:
+                row = []
+                for R in regions:
+                    val = 0
+                    for (Rr, rv) in r.pw.get_pieces():
+                        if not R.intersect(Rr).is_empty():
+                            val = rv.get_constant_val().to_python()
+                            break
+                    row.append(val)
+                A.append(row)
+                b.append(float(r0))
+
+            bounds = [(0, 1)] * n
+
+            res = linprog(
+                c=[-ci for ci in c],
+                A_ub=A,
+                b_ub=b,
+                bounds=bounds,
+                method="highs"
+            )
+
+            if res.success and -res.fun > float(q0):
+                return False
+
+        return True
