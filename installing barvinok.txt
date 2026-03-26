@@ -1,0 +1,28 @@
+Install NTL shared
+
+cd ~/Downloads/ntl-11.6.0/src
+./configure NTL_GMP_LIP=on \
+            PREFIX=/opt/ntl \
+            GMP_PREFIX=/usr/local \
+            SHARED=on \
+            CXXFLAGS="-fPIC"
+make -j$(nproc)
+sudo make install
+ls /opt/ntl/lib/libntl.so # Check
+
+Install Barvinok shared
+
+cd ~/Documents/barvinok
+make clean
+
+./configure --prefix=/opt/barvinok \
+            --with-ntl-prefix=/opt/ntl \
+            --with-gmp-prefix=/usr/local \
+            --enable-shared-barvinok
+
+make -j$(nproc)
+sudo make install
+
+compile wrapper
+
+gcc -fPIC -shared -o libbarvinok_wrapper.so barvinok_wrapper.c     -I/opt/barvinok/include     -L/opt/barvinok/lib -lbarvinok     -L/opt/ntl/lib -lntl     -lisl -lgmp

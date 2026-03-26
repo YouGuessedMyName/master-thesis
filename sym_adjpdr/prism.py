@@ -1,9 +1,10 @@
 """Parsing/lexing and AST for PRISM."""
 from dataclasses import dataclass
-from typing import Collection
-from adjpdr.helpers import Frac
+from fractions import Fraction
 import stormvogel as sv
 import stormpy
+from sym_adjpdr.frames import *
+import islpy as isl
 
 from lark import Lark, Transformer
 import z3
@@ -13,14 +14,6 @@ with open("adjpdr/grammar.ebnf", "r") as f:
 
 prism_parser = Lark(GRAMMAR, start="start")
 
-def z3expr(x: int | z3.ArithRef):
-    if type(x) == int:
-        return z3.IntVal(x)
-    return x
-
-def simpl_subst(e, cname, cval):
-    return z3.simplify(z3.substitute(z3expr(e), [(z3.Int(cname), z3.IntVal(cval))]))
-
 @dataclass
 class Update:
     variable: z3.Int
@@ -29,13 +22,13 @@ class Update:
 @dataclass
 class Command:
     guards: set[z3.BoolRef]
-    branches: set[tuple[Frac, list[Update]]]
+    branches: set[tuple[Fraction, list[Update]]]
 
 @dataclass
 class Module:
     name: str
-    constants: dict[z3.Int, int]
-    variables: dict[str, tuple[z3.IntVal, z3.IntVal]]
+    constants: dict[str, int]
+    variables: Vars
     commands: set[Command]
     labels: dict[str, set[z3.BoolRef]]
     prop: z3.BoolRef
@@ -102,7 +95,7 @@ class PrismTransformer(Transformer):
         return items
     def branch(self, items):
         prob, updates = items
-        return (Frac(prob), updates)
+        return (Fraction(prob), updates)
 
     def updates(self, items):
         return items

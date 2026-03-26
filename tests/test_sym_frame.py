@@ -1,136 +1,6 @@
-# from sym_adjpdr.frames import *
-# from sym_adjpdr.prism import *
-# from sym_adjpdr.z3_to_isl import *
-# import islpy as isl
-
-# PATH = "prism/line.prism"
-# with open(PATH, "r") as f:
-#     PRISM = f.read()
-
-# tree = prism_parser.parse(PRISM)
-# # print(tree.pretty())
-# m: Module = PrismTransformer().transform(tree)
-# m.constants["N"] = 4
-# m.set_property()
-# m.set_expected_result(PATH)
-# m.clear_constants()
-
-# # test_frame_pw.py
-
-# def make_frame(ctx, vars, pieces):
-#     return Frame.from_pieces(ctx, vars, pieces)
-
-# def make_simple_frame(ctx, vars, guard, val):
-#     return make_frame(ctx, vars, [
-#         (isl.Set.read_from_str(ctx, guard), val)
-#     ])
-
-# def test_eval():
-#     ctx = isl.Context()
-#     vars = {"x": (0, 5)}
-
-#     f = make_frame(ctx, vars, [
-#         (isl.Set.read_from_str(ctx, "{ [x] : x <= 2 }"), Fraction(1)),
-#         (isl.Set.read_from_str(ctx, "{ [x] : x >= 3 }"), Fraction(2)),
-#     ])
-
-#     for x in range(6):
-#         expected = 1 if x <= 2 else 2
-#         assert f.eval({"x": x}) == expected
-
-
-# def test_le():
-#     ctx = isl.Context()
-#     vars = {"x": (0, 5)}
-
-#     f = make_frame(ctx, vars, [
-#         (isl.Set.read_from_str(ctx, "{ [x] : }"), Fraction(1))
-#     ])
-#     g = make_frame(ctx, vars, [
-#         (isl.Set.read_from_str(ctx, "{ [x] : }"), Fraction(2))
-#     ])
-
-#     assert f <= g
-#     assert f.le_slow(g)
-
-
-# def test_meet():
-#     ctx = isl.Context()
-#     vars = {"x": (0, 5)}
-
-#     f = make_frame(ctx, vars, [
-#         (isl.Set.read_from_str(ctx, "{ [x] : }"), Fraction(3))
-#     ])
-#     g = make_frame(ctx, vars, [
-#         (isl.Set.read_from_str(ctx, "{ [x] : }"), Fraction(1))
-#     ])
-
-#     m = Frame.meet(f, g)
-
-#     for x in range(6):
-#         assert m.eval({"x": x}) == 1
-
-
-# def test_dot_fast_equals_slow():
-#     ctx = isl.Context()
-#     vars = {"x": (0, 5)}
-
-#     f = make_frame(ctx, vars, [
-#         (isl.Set.read_from_str(ctx, "{ [x] : x <= 2 }"), Fraction(1)),
-#         (isl.Set.read_from_str(ctx, "{ [x] : x >= 3 }"), Fraction(2)),
-#     ])
-
-#     g = make_frame(ctx, vars, [
-#         (isl.Set.read_from_str(ctx, "{ [x] : }"), Fraction(3)),
-#     ])
-
-#     assert Frame.dot(f, g) == Frame.dot_slow(f, g)
-
-
-# def test_partition_no_overlap():
-#     ctx = isl.Context()
-#     vars = {"x": (0, 5)}
-
-#     f = make_frame(ctx, vars, [
-#         (isl.Set.read_from_str(ctx, "{ [x] : x <= 3 }"), Fraction(1)),
-#         (isl.Set.read_from_str(ctx, "{ [x] : x >= 2 }"), Fraction(2)),
-#     ])
-
-#     # canonicalization ensures no ambiguity
-#     for x in range(6):
-#         val = f.eval({"x": x})
-#         assert val in [1, 2]
-
-# def test_frameset_contains():
-#     ctx = isl.Context()
-#     vars = {"x": (0, 2)}
-
-#     r = make_simple_frame(ctx, vars, "{ [x] : x <= 2 }", 1)
-#     F = make_simple_frame(ctx, vars, "{ [x] : x <= 2 }", 1)
-
-#     fs = FrameSet([(r, Fraction(3))], vars)
-
-#     assert F in fs
-#     assert fs.contains_slow(F)
-
-
-# def test_frameset_subset():
-#     ctx = isl.Context()
-#     vars = {"x": (0, 2)}
-
-#     r1 = make_simple_frame(ctx, vars, "{ [x] : x <= 2 }", 1)
-#     r2 = make_simple_frame(ctx, vars, "{ [x] : x <= 2 }", 2)
-
-#     fs1 = FrameSet([(r1, Fraction(3))], vars)
-#     fs2 = FrameSet([(r2, Fraction(6))], vars)
-
-#     assert fs1 <= fs2
-
-# test_frame_pw_multivar.py
-
 import islpy as isl
 from fractions import Fraction
-from sym_adjpdr.frames import Frame, FrameSet
+from sym_adjpdr.frames import *
 
 # ----------------- helpers -----------------
 
@@ -141,6 +11,13 @@ def make_simple_frame(ctx, vars, guard, val):
     return make_frame(ctx, vars, [
         (isl.Set.read_from_str(ctx, guard), val)
     ])
+
+def make_frame_str(ctx, vars, pieces):
+    return Frame.from_pieces(ctx, vars, [(isl.Set.read_from_str(ctx, guard), isl.Aff.read_from_str(ctx, aff))
+        for guard, aff in pieces])
+
+s = isl.Set.read_from_str
+a = isl.Aff
 
 # ----------------- tests single variable -----------------
 
@@ -273,3 +150,19 @@ def test_frameset_subset_two_vars():
     fs2 = FrameSet([(r2, Fraction(12))], vars)
 
     assert fs1 <= fs2
+
+# ----------------- dot tests with piecewise affine -----------------
+
+def test_dot_single_var_affine():
+    ctx = isl.Context()
+    vars = {"x": (0, 5)}
+    domain = make_domain(ctx, vars)
+    # Example: 
+    # Frame(pw=PwAff("{ [x, y] -> [(1)] : (x = 0 and y = 1) or (x = 1 and y = 0); [x, y] -> [(2)] : y = x and 0 <= x <= 1 }")
+    pwf = isl.PwAff.read_from_str(ctx, "{ [x] -> [(x)] : x <= 3; [x] -> [(3)] : x > 3 }")
+    f = Frame(pwf, domain, vars)
+    pwg = isl.PwAff.read_from_str(ctx, "{ [x] -> [(6)] }")
+    g = Frame(pwg, domain, vars)
+    
+    assert Frame.dot(f, g) == Frame.dot_slow(f, g)
+

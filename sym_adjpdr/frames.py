@@ -1,10 +1,11 @@
-# frame_system_pw.py
+# frames.py
 
 from dataclasses import dataclass
 from fractions import Fraction
 from typing import Iterator
 import islpy as isl
 from itertools import product
+from sym_adjpdr.barvinok_bindings import *
 
 # LP solver
 from scipy.optimize import linprog
@@ -48,7 +49,7 @@ class Frame:
 
     # ---------- canonical constructor ----------
     @staticmethod
-    def from_pieces(ctx, variables, pieces):
+    def from_pieces(ctx: isl.Context, variables: Vars, pieces: Iterator[tuple[isl.Set, Fraction | isl.Aff]]):
         domain = make_domain(ctx, variables)
 
         used = isl.Set.empty(domain.get_space())
@@ -62,10 +63,13 @@ class Frame:
 
             used = used.union(clean)
             space = clean.get_space()
-            aff = isl.Aff.zero_on_domain(space)
 
-            val_isl = isl.Val(frac_to_isl(val), clean.get_ctx())
-            aff = aff.set_constant_val(val_isl)
+            if type(val) == Fraction:
+                aff = isl.Aff.zero_on_domain(space)
+                val_isl = isl.Val(frac_to_isl(val), clean.get_ctx())
+                aff = aff.set_constant_val(val_isl)
+            else:
+                aff = val
 
             pw_piece = isl.PwAff.from_aff(aff).intersect_domain(clean)
             pw = pw_piece if pw is None else pw.union_max(pw_piece)
@@ -80,7 +84,7 @@ class Frame:
             pw = pw_piece if pw is None else pw.union_max(pw_piece)
 
         return Frame(pw, domain, variables)
-
+    
     # ---------- evaluation ----------
     def eval(self, s: State) -> Fraction:
         ctx = self.domain.get_ctx()
@@ -126,18 +130,25 @@ class Frame:
         return Frame.from_pieces(ctx, f.variables, pieces)
 
     # ---------- FAST dot product ----------
+    # @staticmethod
+    # def dot(f: "Frame", g: "Frame") -> Fraction:
+    #     prod = f.pw * g.pw
+    #     prod = prod.intersect_domain(f.domain)
+
+    #     total = Fraction(0)
+    #     for sset, aff in prod.get_pieces():
+    #         count = sset.count_val().to_python()
+    #         val = aff.get_constant_val().to_python()
+    #         total += count * val
+
+    #     return total
+
     @staticmethod
     def dot(f: "Frame", g: "Frame") -> Fraction:
+        # piecewise product
         prod = f.pw * g.pw
-        prod = prod.intersect_domain(f.domain)
-
-        total = Fraction(0)
-        for sset, aff in prod.get_pieces():
-            count = sset.count_val().to_python()
-            val = aff.get_constant_val().to_python()
-            total += count * val
-
-        return total
+        prod = isl.PwQPolynomial.from_pw_aff(prod.intersect_domain(f.domain))
+        return barvinok_sum_pwqp(prod)
 
     # ---------- slow dot ----------
     @staticmethod

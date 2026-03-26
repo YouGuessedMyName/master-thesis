@@ -12,3 +12,7 @@ module grid
 endmodule
 
 label "bad" = x = N-1;
+
+// [x=N-1]*1
+// +[y=N-1]*F
+// +[x<N-1 & y<N-1]*(1/2+F[x/x+1] + 1/2 F[y/y+1])
