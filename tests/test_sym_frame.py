@@ -166,3 +166,13 @@ def test_dot_single_var_affine():
     
     assert Frame.dot(f, g) == Frame.dot_slow(f, g)
 
+def test_huge_domain():
+    for _ in range(500):
+        ctx = isl.Context()
+        HUGE = 10**12
+        vars = {"x": (0, HUGE)}
+        f = Frame.from_pieces(ctx, vars, [(s(ctx, "{ [x] : }"), Fraction(1))])
+        g = Frame.from_pieces(ctx, vars, [(s(ctx, "{ [x] : }"), Fraction(3))])
+
+        assert f <= g
+        assert Frame.dot(f,g) == 3 * (HUGE+1)

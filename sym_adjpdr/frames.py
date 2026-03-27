@@ -129,20 +129,6 @@ class Frame:
             pieces.append((point, val))
         return Frame.from_pieces(ctx, f.variables, pieces)
 
-    # ---------- FAST dot product ----------
-    # @staticmethod
-    # def dot(f: "Frame", g: "Frame") -> Fraction:
-    #     prod = f.pw * g.pw
-    #     prod = prod.intersect_domain(f.domain)
-
-    #     total = Fraction(0)
-    #     for sset, aff in prod.get_pieces():
-    #         count = sset.count_val().to_python()
-    #         val = aff.get_constant_val().to_python()
-    #         total += count * val
-
-    #     return total
-
     @staticmethod
     def dot(f: "Frame", g: "Frame") -> Fraction:
         # piecewise product

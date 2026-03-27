@@ -1,20 +1,14 @@
-import ctypes
-import ctypes.util
 import islpy as isl
+from sym_adjpdr.barvinok_bindings import BarvinokSummator
 
-BARVINOK_PATH = "/opt/barvinok/lib/libbarvinok.so"
-lib = ctypes.CDLL(BARVINOK_PATH)
+# Create your piecewise quasi-polynomial
+pwqpoly = isl.PwQPolynomial("{ [x] -> 6 * x : 0 <= x <= 3; [x] -> 18 : 4 <= x <= 5 }") # your polynomial here
 
-# Function signatures
-lib.isl_pw_qpolynomial_sum.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-lib.isl_pw_qpolynomial_sum.restype = ctypes.c_void_p
+# Persistent summator
+summator = BarvinokSummator()
 
-def barvinok_sum_polyhedron(set_, pw_aff):
-    """
-    Return an isl.PwQPolynomial representing ∑_{x∈set_} pw_aff(x).
-    """
-    set_ptr = set_._ptr
-    aff_ptr = pw_aff._ptr
-
-    res_ptr = lib.isl_pw_qpolynomial_sum(set_ptr, aff_ptr)
-    return isl.PwQPolynomial._from_ptr(res_ptr)
+try:
+    result = summator.sum_pwqp(pwqpoly)
+    print("Sum =", result)
+finally:
+    summator.close()
