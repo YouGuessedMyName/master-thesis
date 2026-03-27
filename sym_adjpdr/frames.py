@@ -85,6 +85,10 @@ class Frame:
 
         return Frame(pw, domain, variables)
     
+    @staticmethod
+    def zero(ctx: isl.Context, variables: Vars):
+        return Frame.from_pieces(ctx, variables, [])
+
     # ---------- evaluation ----------
     def eval(self, s: State) -> Fraction:
         ctx = self.domain.get_ctx()
@@ -143,6 +147,9 @@ class Frame:
         for s in enumerate_states(f.variables):
             total += f.eval(s) * g.eval(s)
         return total
+    
+    def __str__(self) -> str:
+        return str(self.pw)
 
 # ---------- FrameSet ----------
 

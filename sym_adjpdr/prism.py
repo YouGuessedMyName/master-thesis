@@ -21,6 +21,10 @@ class Expr:
 
     def __str__(self):
         return "<expr>"
+    
+    def eval(self):
+        """Evaluate subexpressions with no free variables. Return simplified Expr."""
+        return self
 
 @dataclass
 class Var(Expr):
@@ -32,12 +36,20 @@ class Var(Expr):
     def __str__(self):
         return self.name
 
+    def eval(self):
+        # Cannot evaluate free variable
+        return self
+
 @dataclass
 class Const(Expr):
-    value: int
+    value: Fraction
 
     def __str__(self):
         return str(self.value)
+    
+    def eval(self):
+        # Constant evaluates to itself
+        return self
 
 @dataclass
 class Add(Expr):
@@ -49,6 +61,13 @@ class Add(Expr):
 
     def __str__(self):
         return f"({self.left} + {self.right})"
+    
+    def eval(self):
+        left = self.left.eval()
+        right = self.right.eval()
+        if isinstance(left, Const) and isinstance(right, Const):
+            return Const(left.value + right.value)
+        return Add(left.eval(), right.eval())
 
 @dataclass
 class Sub(Expr):
@@ -56,10 +75,19 @@ class Sub(Expr):
     right: Expr
 
     def substitute(self, name: str, value):
-        return Sub(self.left.substitute(name, value), self.right.substitute(name, value))
+        new_left = self.left.substitute(name, value)
+        new_right = self.right.substitute(name, value)
+        return Sub(new_left, new_right)
 
     def __str__(self):
         return f"({self.left} - {self.right})"
+    
+    def eval(self):
+        left = self.left.eval()
+        right = self.right.eval()
+        if isinstance(left, Const) and isinstance(right, Const):
+            return Const(left.value - right.value)
+        return Sub(left.eval(), right.eval())
 
 @dataclass
 class Mul(Expr):
@@ -71,6 +99,13 @@ class Mul(Expr):
 
     def __str__(self):
         return f"({self.left} * {self.right})"
+    
+    def eval(self):
+        left = self.left.eval()
+        right = self.right.eval()
+        if isinstance(left, Const) and isinstance(right, Const):
+            return Const(left.value - right.value)
+        return Mul(left.eval(), right.eval())
 
 @dataclass
 class Div(Expr):
@@ -82,6 +117,9 @@ class Div(Expr):
 
     def __str__(self):
         return f"({self.left} / {self.right})"
+    
+    def eval(self):
+        return Div(self.left.eval(), self.right.eval())
 
 @dataclass
 class Eq(Expr):
@@ -93,6 +131,9 @@ class Eq(Expr):
 
     def __str__(self):
         return f"({self.left} == {self.right})"
+    
+    def eval(self):
+        return Eq(self.left.eval(), self.right.eval())
 
 @dataclass
 class Lt(Expr):
@@ -104,6 +145,9 @@ class Lt(Expr):
 
     def __str__(self):
         return f"({self.left} < {self.right})"
+    
+    def eval(self):
+        return Lt(self.left.eval(), self.right.eval())
 
 @dataclass
 class Not(Expr):
@@ -114,6 +158,9 @@ class Not(Expr):
 
     def __str__(self):
         return f"!( {self.expr} )"
+    
+    def eval(self):
+        return Not(self.expr.eval())
 
 @dataclass
 class And(Expr):
@@ -124,6 +171,9 @@ class And(Expr):
 
     def __str__(self):
         return " & ".join(f"({e})" for e in self.exprs)
+    
+    def eval(self):
+        return And([e.eval() for e in self.exprs])
 
 # === AST structures ===
 @dataclass
@@ -139,7 +189,7 @@ class Command:
 @dataclass
 class Module:
     name: str
-    constants: dict[str, int]
+    constants: dict[str, Fraction]
     variables: Vars
     commands: set[Command]
     labels: dict[str, set[Expr]]
@@ -149,30 +199,28 @@ class Module:
     def clear_constants(self):
         """Replace constants in variables, guards, branches, labels, and property."""
         for cname, cval in self.constants.items():
-            const_expr = Const(cval)
+            const_expr = cval
             # Update variable bounds
             for name, (lb, ub) in self.variables.items():
-                self.variables[name] = lb.substitute(cname, const_expr), ub.substitute(cname, const_expr)
+                self.variables[name] = int(lb.substitute(cname, cval).eval().value), int(ub.substitute(cname, cval).eval().value)
             # Update commands
             for c in self.commands:
-                c.guards = [g.substitute(cname, const_expr) for g in c.guards]
+                c.guards = [g.substitute(cname, cval).eval() for g in c.guards]
                 new_branches = []
                 for prob, updates in c.branches:
                     new_updates = [
-                        Update(u.variable.substitute(cname, const_expr),
-                               u.new_val.substitute(cname, const_expr))
+                        Update(u.variable.substitute(cname, cval).eval(),
+                               u.new_val.substitute(cname, cval).eval())
                         for u in updates
                     ]
                     new_branches.append((prob, new_updates))
                 c.branches = new_branches
             # Update labels
             for lname, guards in self.labels.items():
-                print(lname)
-                print(type(g) for g in guards)
-                self.labels[lname] = [g.substitute(cname, const_expr) for g in guards]
+                self.labels[lname] = [g.substitute(cname, cval).eval() for g in guards]
             # Update property
             if self.prop is not None:
-                self.prop = self.prop.substitute(cname, const_expr)
+                self.prop = self.prop.substitute(cname, const_expr).eval()
 
     def set_property(self, bad_label: str = "bad"):
         self.prop = Not(And(list(self.labels[bad_label])))

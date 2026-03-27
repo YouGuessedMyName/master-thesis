@@ -1,14 +1,7 @@
-import islpy as isl
-from sym_adjpdr.barvinok_bindings import BarvinokSummator
+from sym_adjpdr.prism import *
 
-# Create your piecewise quasi-polynomial
-pwqpoly = isl.PwQPolynomial("{ [x] -> 6 * x : 0 <= x <= 3; [x] -> 18 : 4 <= x <= 5 }") # your polynomial here
+e = Eq(left=Var(name='x'), right=Sub(left=Var(name='N'), right=Const(value=Fraction(1, 1))))
 
-# Persistent summator
-summator = BarvinokSummator()
-
-try:
-    result = summator.sum_pwqp(pwqpoly)
-    print("Sum =", result)
-finally:
-    summator.close()
+print([e])
+e_ = e.substitute('N', 4)
+print([e_])

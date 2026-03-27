@@ -1,6 +1,6 @@
 dtmc
 
-const int N = 4;
+const int N = 3;
 
 module line
     x : [0..N-1];
