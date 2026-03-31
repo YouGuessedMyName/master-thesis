@@ -73,15 +73,23 @@ def join_maps_with_priority(map1: isl.Map, map2: isl.Map) -> isl.Map:
     combined = map1.union(map2_only).coalesce()
     return combined
 
+def to_indicator_function(s: isl.Set, constant_val: int = 1) -> isl.PwAff:
+    restricted_one = isl.PwAff.val_on_domain(s, isl.Val(constant_val))
+    zeroes = isl.PwAff.zero_on_domain(s.space)
+    res = zeroes.union_add(restricted_one)
+    return res
+
 class Model:
     # For now support only DTMC
     vars: Vars
-    bad: Frame
-    prop: Frame
-    map: isl.PwMultiAff
+    bad: isl.Set
     factor: int
+    module: Module
+    ctx: isl.Context
+    prop: Frame
 
-    def __init__(self, module: Module, bad_label: str = "bad"):
+    def __init__(self, module: Module, max_prob: Fraction, initial_state: dict[str, Fraction] | None = None):
+        
         self.vars = module.variables
         # TODO for now we only support properties of the form Not (And [expr...])
         assert type(module.prop) == Not
@@ -89,90 +97,61 @@ class Model:
         assert type(expr) == And
         conjuncts = expr.exprs
         self.bad = conjuncts_to_isl_set(module.variables, conjuncts, False)
-        self.prop = conjuncts_to_isl_set(module.variables, conjuncts, True)
-        self.map = self.__create_map(module, bad_label)
+        
         self.factor = module.lcm
-    
-    # @staticmethod
-    # def __create_map(module: Module) -> isl.Map:
-    #     var_part = "[" + ",".join(module.variables) + "] -> "
-    #     pieces = []
-    #     for m in module.commands:
-    #         guard = m.guards[0]
-    #         guard_pieces = []
-    #         for i in range(len(module.variables)):
-    #             i_updates_strings = []
-    #             for p,us in m.branches:
-    #                 assert len(us) == len(module.variables)
-    #                 u = us[i]
-    #                 updates_str = str(p*module.lcm) + " * " + expr_to_isl_string(u.new_val)
-    #                 i_updates_strings.append(updates_str)
-    #             i_updates_str = " + ".join(i_updates_strings)
-    #             guard_pieces.append(i_updates_str)
-    #         updates_str = ", ".join(guard_pieces)
-    #         isl_guard = expr_to_isl_string(guard, False)
-    #         isl_subst = var_part + "[" + updates_str + "]"
-    #         map_part = isl_subst + " : " + isl_guard
-    #         pieces.append(map_part)
-    #     res = "{ " + "; ".join(pieces) + " }"
-    #     mp = isl.Map(res).as_pw_multi_aff().coalesce()
-    #     return mp
+        self.module = module
 
-    @staticmethod
-    def __create_commands_map_string(module: Module, commands):
-        lhs_variables = "[" + ",".join(module.variables) + "] -> "
-        map_pieces = []
-        for command in module.commands:
-            for guard_expr in command.guards:
-                # Convert the guard expression to ISL string
-                isl_guard_str = expr_to_isl_string(guard_expr)
+        self.ctx = isl.Context()
 
-                # Build update expressions for all variables
-                update_expressions = []
-                for var_index, var_name in enumerate(module.variables):
-                    branch_updates = []
-                    for probability, updates in command.branches:
-                        assert len(updates) == len(module.variables), "Mismatch in number of updates"
-                        update = updates[var_index]
-                        branch_expr_str = f"{probability * module.lcm} * {expr_to_isl_string(update.new_val)}"
-                        branch_updates.append(branch_expr_str)
-
-                    # Combine all branches for this variable
-                    combined_var_update = " + ".join(branch_updates)
-                    update_expressions.append(combined_var_update)
-
-                # Form the update vector for this guard
-                updates_vector_str = ", ".join(update_expressions)
-                map_piece_str = f"{lhs_variables}[{updates_vector_str}] : {isl_guard_str}"
-                map_pieces.append(map_piece_str)
-        return "{ " + "; ".join(map_pieces) + "} "
+        #self.bad_frame = Frame.from_pieces(self.ctx, self.vars, [(self.bad, Fraction(1))])
+        if initial_state is None:
+            initial_state = {v: Fraction(0) for v in module.variables}
+        initial_state_set = isl.Set.read_from_str(self.ctx, "{ [" + ",".join(k + "=" +  str(v) for k,v in initial_state.items()) + "] }")
+        self.prop = Frame.from_pieces(self.ctx, self.vars, [(initial_state_set, max_prob)], default_val=Fraction(1))
+        print()
     
     @staticmethod
-    def __create_map(module: Module, bad_label: str) -> isl.Map:
-        """
-        Build an isl.Map representing all updates of a PRISM module.
-        
-        Each command may have multiple guards. Each guard is converted to a piecewise mapping:
-            [x1, x2, ...] -> [update_x1, update_x2, ...] : guard
-        Probabilistic branches are weighted by module.lcm.
-        """
-        # Construct the left-hand side variable vector: [x1, x2, ...]
-        lhs_variables = "[" + ",".join(module.variables) + "] -> "
-        bad_expression = And(module.labels[bad_label])
-        
-        bad_label_str = "{" + f"{lhs_variables}[{module.lcm}] : {expr_to_isl_string(bad_expression)}" + "}"
-        bad_label_map = isl.Map(bad_label_str)
-        transition_str = Model.__create_commands_map_string(module, module.commands)
-        transition_map = isl.Map(transition_str)
-
-        isl_map = join_maps_with_priority(bad_label_map, transition_map)
-        final_map = isl_map.as_pw_multi_aff().coalesce()
-        return isl_map.as_pw_multi_aff().coalesce()
-
+    def from_prism_file(path: str, max_prob: Fraction, set_expected_result: bool = True):
+        with open(path, "r") as f:
+            prism_str = f.read()
+        tree = prism_parser.parse(prism_str)
+        module: Module = PrismTransformer().transform(tree)
+        module.set_property()
+        if set_expected_result:
+            module.set_expected_result(path)
+        module.clear_constants()
+        return Model(module, max_prob)
+    
     def Phi(self, F: Frame) -> Frame:
-        assert F.factor == self.factor
-        new_frame = Frame(F.pw.pullback_pw_multi_aff(self.map).intersect_domain(F.domain).coalesce(), F.domain, F.variables, F.factor)
-        return new_frame
+        # TODO refactor with caching for a much faster version. 
+        # We can build everything on __init__ up to where F is used.
+        result_pwaff = to_indicator_function(self.bad)
+        for command in self.module.commands:
+            guard = conjuncts_to_isl_set(self.vars, command.guards, False).subtract(self.bad)
+            guard_update_pwaff = None
+            for p, updates in command.branches:
+                assert len(updates) == len(self.vars)
+                update_strs = []
+                for update in updates:
+                    update_strs.append(expr_to_isl_string(update.new_val))
+                update_str = ",".join(update_strs)
+                final_map_str = "{ [" + ",".join(self.vars) + "] -> [" + update_str + "] }" 
+                mp = isl.Map(final_map_str).as_pw_multi_aff().coalesce()
+                
+                isl_p = isl.Val(frac_to_isl(p))
+                mulAff_p = isl.Aff.val_on_domain(guard.space, isl_p)
+
+                # This part actually has to be in Phi!
+                mappedF = F.pw.pullback_pw_multi_aff(mp).intersect_domain(F.domain).coalesce()
+                multid = mappedF.mul(mulAff_p)
+                guard_update_pwaff = multid if guard_update_pwaff is None else guard_update_pwaff + multid
+            
+            guarded_update_pwaff = guard_update_pwaff.intersect_domain(guard)
+
+            result_pwaff = result_pwaff.union_add(guarded_update_pwaff)\
+                .intersect_domain(F.domain).coalesce()
+        return Frame(result_pwaff, F.domain, F.variables, F.factor)
+            
     
     def __str__(self) -> str:
         return f"""DTMC Model

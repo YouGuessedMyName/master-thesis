@@ -17,7 +17,7 @@ type Vars = dict[str, tuple[int, int]] # Represents a variable with a name and a
 TECHNICAL = "TECHNICAL" # Includes the factors that we abstract away from
 ABSTRACT = "ABSTRACT"
 VERBOSE = "VERBOSE"
-FRAME_PRINTING = TECHNICAL
+FRAME_PRINTING = VERBOSE
 
 # ---------- Helpers ----------
 
@@ -52,65 +52,12 @@ def pretty_print_pwaff(pw: isl.PwAff, name: str = "f", factor: int = 1) -> str:
     Pretty print a PwAff as a piecewise function, removing unnecessary
     braces and brackets for singleton domains.
     """
-    pieces = []
-
-    # iterate over pieces
-    for piece in pw.get_pieces():
-        dom = piece[0]  # isl.Set
-        aff = piece[1]  # isl.Aff
-
-        # Convert Aff to string with fractions for constants
-        terms = []
-        for i in range(aff.dim(isl.dim_type.in_)):
-            coeff = aff.get_coefficient_val(isl.dim_type.in_, i)
-            if coeff is None:
-                continue
-            try:
-                coeff_val = (Fraction(coeff.num, coeff.den) / factor).limit_denominator()
-            except:
-                coeff_val = Fraction(coeff.to_python() / factor).limit_denominator()
-            var_name = pw.get_space().get_dim_name(isl.dim_type.in_, i)
-            if coeff_val == 1:
-                terms.append(f"{var_name}")
-            elif coeff_val == -1:
-                terms.append(f"-{var_name}")
-            elif coeff_val != 0:
-                terms.append(f"{coeff_val}*{var_name}")
-
-        # constant term
-        c = aff.get_constant_val()
-        if c is not None:
-            try:
-                c_val = (Fraction(c.num, c.den)/factor).limit_denominator()
-            except:
-                c_val = Fraction(c.to_python() / factor).limit_denominator()
-            if c_val != 0 or not terms:
-                terms.append(f"{c_val}")
-
-        aff_str = " + ".join(terms) if terms else "0"
-
-        # domain string
-        dom_str = str(dom)
-        # Clean domain string: remove braces and brackets if singleton or simple
-        if dom.is_empty():
-            dom_str = "empty"
-        else:
-            # If it has ": " it's a normal constraint, take the right-hand side
-            if ": " in dom_str:
-                dom_str = dom_str.split(": ", 1)[1]
-            # Remove surrounding { [ ] } if they exist
-            dom_str = dom_str.strip("{}[] ").replace("[", "").replace("]", "")
-            # Remove extra spaces around equals
-            dom_str = dom_str.replace(" = ", "=")
-
-        pieces.append((aff_str, dom_str))
-
-    # Build the final piecewise string
-    s = f"{name}(x) = {{\n"
-    for aff_str, dom_str in pieces:
-        s += f"    {aff_str}   if {dom_str}\n"
-    s += "}"
-    return s
+    l = str(pw).strip("{}").split(';')
+    def order(s):
+        index = len(s)-1 if s[len(s)-1] != " " else len(s)-2
+        return int(s[index])
+    sorted_l = sorted(l, key=order)
+    return "\n".join(sorted_l)
 
 def divide_numbers_in_parentheses(s: str, factor: int) -> str:
     """
@@ -144,7 +91,8 @@ class Frame:
 
     # ---------- canonical constructor ----------
     @staticmethod
-    def from_pieces(ctx: isl.Context, variables: Vars, pieces: Iterator[tuple[isl.Set, Fraction | isl.Aff]], factor: int = 1):
+    def from_pieces(ctx: isl.Context, variables: Vars, pieces: Iterator[tuple[isl.Set, Fraction | isl.Aff]], 
+                    factor: int = 1, default_val: Fraction = Fraction(0)):
         domain = make_domain(ctx, variables)
 
         used = isl.Set.empty(domain.get_space())
@@ -173,7 +121,8 @@ class Frame:
         remaining = domain.subtract(used)
         if not remaining.is_empty():
             space = remaining.get_space()
-            aff = isl.Aff.zero_on_domain(space)
+            isl_default_val = isl.Val(frac_to_isl(default_val))
+            aff = isl.Aff.val_on_domain(space, isl_default_val)
             pw_piece = isl.PwAff.from_aff(aff).intersect_domain(remaining)
             
             pw = pw_piece if pw is None else pw.union_max(pw_piece)
@@ -199,9 +148,7 @@ class Frame:
 
     # ---------- partial order ----------
     def __le__(self, other: "Frame") -> bool:
-        diff = (self.pw - other.pw).intersect_domain(self.domain)
-        max_val = diff.max_val()
-        return max_val.is_neg() or max_val.is_zero()
+        return self.pw.le_set(other.pw).is_equal(self.domain)
 
     def le_slow(self, other: "Frame") -> bool:
         for s in enumerate_states(self.variables):
@@ -251,6 +198,12 @@ class Frame:
             return (divide_numbers_in_parentheses(str(self.pw), self.factor))
         else:
             return pretty_print_pwaff(self.pw, "f", self.factor)
+        
+    def __sub__(self, other):
+        return Frame(self.pw - other.pw, self.domain, self.variables, self.factor)
+    
+    def sum(self):
+        return barvinok_sum_pwqp(isl.PwQPolynomial.from_pw_aff(self.pw).intersect_domain(self.domain))
 # ---------- FrameSet ----------
 
 @dataclass
