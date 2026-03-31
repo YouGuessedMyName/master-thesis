@@ -34,6 +34,20 @@ def test_eval_single_var():
         expected = 1 if x <= 2 else 2
         assert f.eval({"x": x}) == expected
 
+def test_eval_frac():
+    ctx = isl.Context()
+    vars = {"x": (0, 5)}
+
+    f = make_frame(ctx, vars, [
+        (isl.Set.read_from_str(ctx, "{ [x] : x <= 2 }"), Fraction(1,2)),
+        (isl.Set.read_from_str(ctx, "{ [x] : x >= 3 }"), Fraction(2,3)),
+    ])
+
+    for x in range(6):
+        expected = Fraction(1,2) if x <= 2 else Fraction(2,3)
+        assert f.eval({"x": x}) == expected
+
+
 def test_le_single_var():
     ctx = isl.Context()
     vars = {"x": (0, 5)}

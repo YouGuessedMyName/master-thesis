@@ -1,7 +1,7 @@
 from sym_adjpdr.prism import *
 from sym_adjpdr.model import *
 
-PATH = "prism/line.prism"
+PATH = "prism/probline.prism"
 
 with open(PATH, "r") as f:
     PRISM = f.read()
@@ -17,7 +17,10 @@ model = Model(module)
 print(model)
 
 ctx = isl.Context()
-F = Frame.zero(ctx, model.vars)
-F = Frame.from_pieces(ctx, model.vars, [(isl.Set.read_from_str(ctx, "{ [x] : x = 2 }"), Fraction(1))])
+F = Frame.zero(ctx, model.vars, model.factor)
+F = Frame.from_pieces(ctx, model.vars, [(isl.Set.read_from_str(ctx, "{ [x] : x = 2 }"), Fraction(model.factor))], model.factor)
+Phi_F = model.Phi(F)
+Phi_Phi_F = model.Phi(Phi_F)
 print("F", F)
-print("Phi(F)", model.Phi(F))
+print("Phi(F)", Phi_F)
+print("Phi(Phi(F))", Phi_Phi_F)

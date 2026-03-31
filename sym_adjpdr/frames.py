@@ -6,12 +6,18 @@ from typing import Iterator
 import islpy as isl
 from itertools import product
 from sym_adjpdr.barvinok_bindings import *
+import re
 
 # LP solver
 from scipy.optimize import linprog
 
 type State = dict[str, int]
 type Vars = dict[str, tuple[int, int]] # Represents a variable with a name and a domain.
+
+TECHNICAL = "TECHNICAL" # Includes the factors that we abstract away from
+ABSTRACT = "ABSTRACT"
+VERBOSE = "VERBOSE"
+FRAME_PRINTING = TECHNICAL
 
 # ---------- Helpers ----------
 
@@ -38,6 +44,94 @@ def enumerate_states(variables: Vars) -> Iterator[State]:
 def frac_to_isl(fr: Fraction) -> str:
     return f"{fr.numerator}/{fr.denominator}"
 
+from fractions import Fraction
+import islpy as isl
+
+def pretty_print_pwaff(pw: isl.PwAff, name: str = "f", factor: int = 1) -> str:
+    """
+    Pretty print a PwAff as a piecewise function, removing unnecessary
+    braces and brackets for singleton domains.
+    """
+    pieces = []
+
+    # iterate over pieces
+    for piece in pw.get_pieces():
+        dom = piece[0]  # isl.Set
+        aff = piece[1]  # isl.Aff
+
+        # Convert Aff to string with fractions for constants
+        terms = []
+        for i in range(aff.dim(isl.dim_type.in_)):
+            coeff = aff.get_coefficient_val(isl.dim_type.in_, i)
+            if coeff is None:
+                continue
+            try:
+                coeff_val = (Fraction(coeff.num, coeff.den) / factor).limit_denominator()
+            except:
+                coeff_val = Fraction(coeff.to_python() / factor).limit_denominator()
+            var_name = pw.get_space().get_dim_name(isl.dim_type.in_, i)
+            if coeff_val == 1:
+                terms.append(f"{var_name}")
+            elif coeff_val == -1:
+                terms.append(f"-{var_name}")
+            elif coeff_val != 0:
+                terms.append(f"{coeff_val}*{var_name}")
+
+        # constant term
+        c = aff.get_constant_val()
+        if c is not None:
+            try:
+                c_val = (Fraction(c.num, c.den)/factor).limit_denominator()
+            except:
+                c_val = Fraction(c.to_python() / factor).limit_denominator()
+            if c_val != 0 or not terms:
+                terms.append(f"{c_val}")
+
+        aff_str = " + ".join(terms) if terms else "0"
+
+        # domain string
+        dom_str = str(dom)
+        # Clean domain string: remove braces and brackets if singleton or simple
+        if dom.is_empty():
+            dom_str = "empty"
+        else:
+            # If it has ": " it's a normal constraint, take the right-hand side
+            if ": " in dom_str:
+                dom_str = dom_str.split(": ", 1)[1]
+            # Remove surrounding { [ ] } if they exist
+            dom_str = dom_str.strip("{}[] ").replace("[", "").replace("]", "")
+            # Remove extra spaces around equals
+            dom_str = dom_str.replace(" = ", "=")
+
+        pieces.append((aff_str, dom_str))
+
+    # Build the final piecewise string
+    s = f"{name}(x) = {{\n"
+    for aff_str, dom_str in pieces:
+        s += f"    {aff_str}   if {dom_str}\n"
+    s += "}"
+    return s
+
+def divide_numbers_in_parentheses(s: str, factor: int) -> str:
+    """
+    Replace every number inside parentheses in string `s` with number/factor.
+    Fractions are displayed if division is not exact.
+    """
+    def repl(match):
+        num_str = match.group(1)
+        # Handle integers only (or floats if needed)
+        num = int(num_str)
+        result = Fraction(num, factor)
+        # Return integer if exact, else Fraction
+        if result.denominator == 1:
+            return f"({result.numerator})"
+        else:
+            return f"({result})"
+
+    # Match numbers inside parentheses: e.g., (123)
+    pattern = r"\((\d+)\)"
+    return re.sub(pattern, repl, s)
+
 
 # ---------- Frame ----------
 
@@ -46,10 +140,11 @@ class Frame:
     pw: isl.PwAff
     domain: isl.Set
     variables: Vars
+    factor: int = 1
 
     # ---------- canonical constructor ----------
     @staticmethod
-    def from_pieces(ctx: isl.Context, variables: Vars, pieces: Iterator[tuple[isl.Set, Fraction | isl.Aff]]):
+    def from_pieces(ctx: isl.Context, variables: Vars, pieces: Iterator[tuple[isl.Set, Fraction | isl.Aff]], factor: int = 1):
         domain = make_domain(ctx, variables)
 
         used = isl.Set.empty(domain.get_space())
@@ -83,11 +178,11 @@ class Frame:
             
             pw = pw_piece if pw is None else pw.union_max(pw_piece)
 
-        return Frame(pw, domain, variables)
+        return Frame(pw, domain, variables, factor)
     
     @staticmethod
-    def zero(ctx: isl.Context, variables: Vars):
-        return Frame.from_pieces(ctx, variables, [])
+    def zero(ctx: isl.Context, variables: Vars, factor: int = 1):
+        return Frame.from_pieces(ctx, variables, [], factor)
 
     # ---------- evaluation ----------
     def eval(self, s: State) -> Fraction:
@@ -100,7 +195,7 @@ class Frame:
             )
 
         val = self.pw.eval(point)
-        return Fraction(val.to_python()).limit_denominator()
+        return Fraction(val.to_python() / self.factor).limit_denominator()
 
     # ---------- partial order ----------
     def __le__(self, other: "Frame") -> bool:
@@ -117,8 +212,9 @@ class Frame:
     # ---------- meet ----------
     @staticmethod
     def meet(f: "Frame", g: "Frame") -> "Frame":
+        assert f.factor == g.factor
         pw = f.pw.min(g.pw)
-        return Frame(pw, f.domain, f.variables)
+        return Frame(pw, f.domain, f.variables, f.factor)
 
     @staticmethod
     def meet_slow(f: "Frame", g: "Frame") -> "Frame":
@@ -149,8 +245,12 @@ class Frame:
         return total
     
     def __str__(self) -> str:
-        return str(self.pw)
-
+        if FRAME_PRINTING == TECHNICAL:
+            return "[" + str(self.factor) + "]" + str(self.pw)
+        elif FRAME_PRINTING == ABSTRACT:
+            return (divide_numbers_in_parentheses(str(self.pw), self.factor))
+        else:
+            return pretty_print_pwaff(self.pw, "f", self.factor)
 # ---------- FrameSet ----------
 
 @dataclass

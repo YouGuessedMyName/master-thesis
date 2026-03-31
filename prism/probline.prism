@@ -1,0 +1,11 @@
+dtmc
+
+const int N = 3;
+
+module line
+    x : [0..N-1];
+
+    [] x<N & x<N -> 1/2: (x'=x+1) + 1/2 : (x'=x-1);
+endmodule
+
+label "bad" = x = N-1;

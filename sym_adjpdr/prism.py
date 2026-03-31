@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from fractions import Fraction
 import stormvogel as sv
 import stormpy
+import math
 
 type Vars = dict[str, tuple[int, int]] # Represents a variable with a name and a domain.
 
@@ -119,6 +120,10 @@ class Div(Expr):
         return f"({self.left} / {self.right})"
     
     def eval(self):
+        left = self.left.eval()
+        right = self.right.eval()
+        if isinstance(left, Const) and isinstance(right, Const):
+            return Const(left.value / right.value)
         return Div(self.left.eval(), self.right.eval())
 
 @dataclass
@@ -194,6 +199,7 @@ class Module:
     commands: set[Command]
     labels: dict[str, set[Expr]]
     prop: Expr
+    lcm: int
     expected_result: float
 
     def clear_constants(self):
@@ -213,7 +219,7 @@ class Module:
                                u.new_val.substitute(cname, cval).eval())
                         for u in updates
                     ]
-                    new_branches.append((prob, new_updates))
+                    new_branches.append((prob.eval().value, new_updates))
                 c.branches = new_branches
             # Update labels
             for lname, guards in self.labels.items():
@@ -257,14 +263,18 @@ class Module:
             lines.append(f"  Property: {self.prop}")
         if self.expected_result is not None:
             lines.append(f"  Expected result: {self.expected_result}")
+        lines.append(f"  LCM: {self.lcm}")
         return "\n".join(lines)
 
 # === Transformer ===
 class PrismTransformer(Transformer):
+    denominators: list[int] = []
+
     def start(self, items):
         _model_type, constants, module, labels = items
         module.constants = constants
         module.labels = labels
+        module.lcm = math.lcm(* self.denominators)
         return module
 
     # Constants
@@ -277,7 +287,7 @@ class PrismTransformer(Transformer):
     # Module
     def module(self, items):
         name, vars, commands = items
-        return Module(name, None, vars, commands, None, None, None)
+        return Module(name, None, vars, commands, None, None, 0, None)
 
     def vars(self, items):
         return {k: v for k, v in items}
@@ -350,5 +360,7 @@ class PrismTransformer(Transformer):
         return Mul(items[0], items[1])
 
     def div(self, items):
+        if type(items[1]) == Const:
+            self.denominators.append(int(items[1].value))
         return Div(items[0], items[1])
     
