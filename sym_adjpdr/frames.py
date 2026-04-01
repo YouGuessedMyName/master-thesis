@@ -144,7 +144,10 @@ class Frame:
             )
 
         val = self.pw.eval(point)
-        return Fraction(val.to_python() / self.factor).limit_denominator()
+        if val.is_int():
+            return Fraction(val.to_python() / self.factor).limit_denominator()
+        else:
+            return (Fraction(val.to_str()) / self.factor).limit_denominator()
 
     # ---------- partial order ----------
     def __le__(self, other: "Frame") -> bool:
@@ -204,6 +207,14 @@ class Frame:
     
     def sum(self):
         return barvinok_sum_pwqp(isl.PwQPolynomial.from_pw_aff(self.pw).intersect_domain(self.domain))
+    
+    def __setitem__(self, key: dict[str, int], value: Fraction):
+        # isl_val = isl.Val(frac_to_isl(value))
+        # isl_val_pwaff = isl.PwAff.read_from_str(self.pw.domain, 
+        #             "{ " +  + " }")
+        # self.pw = 
+        pass
+        
 # ---------- FrameSet ----------
 
 @dataclass

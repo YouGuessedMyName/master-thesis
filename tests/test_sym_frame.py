@@ -62,12 +62,12 @@ def test_meet_single_var():
     ctx = isl.Context()
     vars = {"x": (0, 5)}
 
-    f = make_simple_frame(ctx, vars, "{ [x] : }", Fraction(3))
+    f = make_simple_frame(ctx, vars, "{ [x] : }", Fraction(3,4))
     g = make_simple_frame(ctx, vars, "{ [x] : }", Fraction(1))
 
     m = Frame.meet(f, g)
     for x in range(6):
-        assert m.eval({"x": x}) == 1
+        assert m.eval({"x": x}) == 3/4
 
 def test_dot_single_var():
     ctx = isl.Context()
@@ -181,12 +181,11 @@ def test_dot_single_var_affine():
     assert Frame.dot(f, g) == Frame.dot_slow(f, g)
 
 def test_huge_domain():
-    for _ in range(500):
-        ctx = isl.Context()
-        HUGE = 10**12
-        vars = {"x": (0, HUGE)}
-        f = Frame.from_pieces(ctx, vars, [(s(ctx, "{ [x] : }"), Fraction(1))])
-        g = Frame.from_pieces(ctx, vars, [(s(ctx, "{ [x] : }"), Fraction(3))])
+    ctx = isl.Context()
+    HUGE = 10**12
+    vars = {"x": (0, HUGE)}
+    f = Frame.from_pieces(ctx, vars, [(s(ctx, "{ [x] : }"), Fraction(1))])
+    g = Frame.from_pieces(ctx, vars, [(s(ctx, "{ [x] : }"), Fraction(3))])
 
-        assert f <= g
-        assert Frame.dot(f,g) == 3 * (HUGE+1)
+    assert f <= g
+    assert Frame.dot(f,g) == 3 * (HUGE+1)

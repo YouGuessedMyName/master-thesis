@@ -87,6 +87,9 @@ class Model:
     module: Module
     ctx: isl.Context
     prop: Frame
+    isl_commands_phi: list[tuple[isl.Set, list[isl.Aff, isl.PwMultiAff]]]
+    # The Set is a guard, the Aff is a probability value, the Map is the substitution itself.
+    isl_commands_theta: list[tuple[isl.Set, list[isl.Aff, isl.MultiAff]]]
 
     def __init__(self, module: Module, max_prob: Fraction, initial_state: dict[str, Fraction] | None = None):
         
@@ -108,8 +111,46 @@ class Model:
             initial_state = {v: Fraction(0) for v in module.variables}
         initial_state_set = isl.Set.read_from_str(self.ctx, "{ [" + ",".join(k + "=" +  str(v) for k,v in initial_state.items()) + "] }")
         self.prop = Frame.from_pieces(self.ctx, self.vars, [(initial_state_set, max_prob)], default_val=Fraction(1))
-        print()
-    
+        self.__initialize_isl_commands_phi()
+        self.__initialize_isl_commands_theta()
+
+    def __initialize_isl_commands_phi(self):
+        self.isl_commands_phi = []
+        for command in self.module.commands:
+            guard = conjuncts_to_isl_set(self.vars, command.guards, False).subtract(self.bad)
+            isl_branch = []
+            for p, updates in command.branches:
+                assert len(updates) == len(self.vars)
+                update_strs = []
+                for update in updates:
+                    update_strs.append(expr_to_isl_string(update.new_val))
+                update_str = ",".join(update_strs)
+                final_map_str = "{ [" + ",".join(self.vars) + "] -> [" + update_str + "] }" 
+                mp = isl.Map(final_map_str).as_pw_multi_aff().coalesce()
+                isl_p = isl.Val(frac_to_isl(p))
+                mulAff_p = isl.Aff.val_on_domain(guard.space, isl_p)
+                isl_branch.append((mulAff_p, mp))
+            self.isl_commands_phi.append((guard, isl_branch))
+
+    def __initialize_isl_commands_theta(self):
+        # This will only work if constants are properly folded!!!
+        self.isl_commands_theta = []
+        for command in self.module.commands:
+            guard = conjuncts_to_isl_set(self.vars, command.guards, False).subtract(self.bad)
+            isl_branch = []
+            for p, updates in command.branches:
+                assert len(updates) == len(self.vars)
+                update_strs = []
+                for update in updates:
+                    update_strs.append(expr_to_isl_string(update.new_val))
+                update_str = ",".join(update_strs)
+                final_map_str = "{ [" + ",".join(self.vars) + "] -> [" + update_str + "] }"
+                mp = isl.Map(final_map_str).reverse().as_pw_multi_aff().coalesce()
+                isl_p = isl.Val(frac_to_isl(p))
+                mulAff_p = isl.Aff.val_on_domain(guard.space, isl_p)
+                isl_branch.append((mulAff_p, mp))
+            self.isl_commands_theta.append((guard, isl_branch))
+
     @staticmethod
     def from_prism_file(path: str, max_prob: Fraction, set_expected_result: bool = True):
         with open(path, "r") as f:
@@ -123,35 +164,32 @@ class Model:
         return Model(module, max_prob)
     
     def Phi(self, F: Frame) -> Frame:
-        # TODO refactor with caching for a much faster version. 
-        # We can build everything on __init__ up to where F is used.
         result_pwaff = to_indicator_function(self.bad)
-        for command in self.module.commands:
-            guard = conjuncts_to_isl_set(self.vars, command.guards, False).subtract(self.bad)
+        for isl_guard, isl_branch in self.isl_commands_phi:
             guard_update_pwaff = None
-            for p, updates in command.branches:
-                assert len(updates) == len(self.vars)
-                update_strs = []
-                for update in updates:
-                    update_strs.append(expr_to_isl_string(update.new_val))
-                update_str = ",".join(update_strs)
-                final_map_str = "{ [" + ",".join(self.vars) + "] -> [" + update_str + "] }" 
-                mp = isl.Map(final_map_str).as_pw_multi_aff().coalesce()
-                
-                isl_p = isl.Val(frac_to_isl(p))
-                mulAff_p = isl.Aff.val_on_domain(guard.space, isl_p)
-
-                # This part actually has to be in Phi!
+            for mulAff_p, mp in isl_branch:
                 mappedF = F.pw.pullback_pw_multi_aff(mp).intersect_domain(F.domain).coalesce()
                 multid = mappedF.mul(mulAff_p)
                 guard_update_pwaff = multid if guard_update_pwaff is None else guard_update_pwaff + multid
             
-            guarded_update_pwaff = guard_update_pwaff.intersect_domain(guard)
-
-            result_pwaff = result_pwaff.union_add(guarded_update_pwaff)\
-                .intersect_domain(F.domain).coalesce()
-        return Frame(result_pwaff, F.domain, F.variables, F.factor)
+            guarded_update_pwaff = guard_update_pwaff.intersect_domain(isl_guard)
+            result_pwaff = result_pwaff.union_add(guarded_update_pwaff)
+                
+        return Frame(result_pwaff.intersect_domain(F.domain).coalesce(), F.domain, F.variables, F.factor)
+    
+    def Theta(self, F: Frame) -> Frame:
+        result_pwaff = to_indicator_function(self.bad)
+        for isl_guard, isl_branch in self.isl_commands_theta:
+            guard_update_pwaff = None
+            for mulAff_p, mp in isl_branch:
+                mappedF = F.pw.pullback_multi_pw_aff(mp).intersect_domain(F.domain).coalesce()
+                multid = mappedF.mul(mulAff_p)
+                guard_update_pwaff = multid if guard_update_pwaff is None else guard_update_pwaff + multid
             
+            guarded_update_pwaff = guard_update_pwaff.intersect_domain(isl_guard)
+            result_pwaff = result_pwaff.union_add(guarded_update_pwaff)
+                
+        return Frame(result_pwaff.intersect_domain(F.domain).coalesce(), F.domain, F.variables, F.factor)
     
     def __str__(self) -> str:
         return f"""DTMC Model
