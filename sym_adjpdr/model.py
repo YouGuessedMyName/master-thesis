@@ -89,7 +89,8 @@ class Model:
     prop: Frame
     isl_commands_phi: list[tuple[isl.Set, list[isl.Aff, isl.PwMultiAff]]]
     # The Set is a guard, the Aff is a probability value, the Map is the substitution itself.
-    isl_commands_theta: list[tuple[isl.Set, list[isl.Aff, isl.MultiAff]]]
+    isl_commands_theta: list[tuple[isl.Set, list[isl.Aff, isl.MultiAff, isl.MultiAff]]]
+    # Forward and backward substitutions.
 
     def __init__(self, module: Module, max_prob: Fraction, initial_state: dict[str, Fraction] | None = None):
         
@@ -137,7 +138,7 @@ class Model:
         self.isl_commands_theta = []
         for command in self.module.commands:
             guard = conjuncts_to_isl_set(self.vars, command.guards, False).subtract(self.bad)
-            isl_branch = []
+            isl_branch_rev = []
             for p, updates in command.branches:
                 assert len(updates) == len(self.vars)
                 update_strs = []
@@ -145,11 +146,15 @@ class Model:
                     update_strs.append(expr_to_isl_string(update.new_val))
                 update_str = ",".join(update_strs)
                 final_map_str = "{ [" + ",".join(self.vars) + "] -> [" + update_str + "] }"
-                mp = isl.Map(final_map_str).reverse().as_pw_multi_aff().coalesce()
+                # original
+                mp = isl.Map(final_map_str).as_pw_multi_aff().coalesce()
                 isl_p = isl.Val(frac_to_isl(p))
                 mulAff_p = isl.Aff.val_on_domain(guard.space, isl_p)
-                isl_branch.append((mulAff_p, mp))
-            self.isl_commands_theta.append((guard, isl_branch))
+                # reversed
+                mp_rev = isl.Map(final_map_str).reverse().as_pw_multi_aff().coalesce()
+                isl_p_rev = isl.Val(frac_to_isl(p))
+                isl_branch_rev.append((mulAff_p, mp, mp_rev))
+            self.isl_commands_theta.append((guard, isl_branch_rev))
 
     @staticmethod
     def from_prism_file(path: str, max_prob: Fraction, set_expected_result: bool = True):
@@ -170,7 +175,8 @@ class Model:
             for mulAff_p, mp in isl_branch:
                 mappedF = F.pw.pullback_pw_multi_aff(mp).intersect_domain(F.domain).coalesce()
                 multid = mappedF.mul(mulAff_p)
-                guard_update_pwaff = multid if guard_update_pwaff is None else guard_update_pwaff + multid
+                guard_update_pwaff = multid if guard_update_pwaff is None else guard_update_pwaff.union_add(multid)
+                # TODO should I use union add here or not?
             
             guarded_update_pwaff = guard_update_pwaff.intersect_domain(isl_guard)
             result_pwaff = result_pwaff.union_add(guarded_update_pwaff)
@@ -178,17 +184,20 @@ class Model:
         return Frame(result_pwaff.intersect_domain(F.domain).coalesce(), F.domain, F.variables, F.factor)
     
     def Theta(self, F: Frame) -> Frame:
-        result_pwaff = to_indicator_function(self.bad)
+        result_pwaff = isl.PwAff.zero_on_domain(F.domain.space)
         for isl_guard, isl_branch in self.isl_commands_theta:
             guard_update_pwaff = None
-            for mulAff_p, mp in isl_branch:
-                mappedF = F.pw.pullback_multi_pw_aff(mp).intersect_domain(F.domain).coalesce()
+            for mulAff_p, mp, mp_rev in isl_branch:
+                mappedF = F.pw.pullback_pw_multi_aff(mp_rev).intersect_domain(F.domain).coalesce()
                 multid = mappedF.mul(mulAff_p)
-                guard_update_pwaff = multid if guard_update_pwaff is None else guard_update_pwaff + multid
-            
-            guarded_update_pwaff = guard_update_pwaff.intersect_domain(isl_guard)
+                guard_update_pwaff = multid if guard_update_pwaff is None else guard_update_pwaff.union_add(multid)
+                print()
+            # We need to intersect with the substituted guard?
+            # Yes, but the phi way...
+            substituted_guard = isl_guard.apply(mp.as_map())
+            guarded_update_pwaff = guard_update_pwaff.intersect_domain(substituted_guard)
             result_pwaff = result_pwaff.union_add(guarded_update_pwaff)
-                
+            print()
         return Frame(result_pwaff.intersect_domain(F.domain).coalesce(), F.domain, F.variables, F.factor)
     
     def __str__(self) -> str:

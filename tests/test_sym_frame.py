@@ -189,3 +189,49 @@ def test_huge_domain():
 
     assert f <= g
     assert Frame.dot(f,g) == 3 * (HUGE+1)
+
+def test_le_negative():
+    ctx = isl.Context()
+    vars = {"x": (0,2)}
+    F = Frame.from_pieces(ctx, vars, [
+        (s(ctx, "{ [x] : x=0}"), Fraction(9,10)),
+        (s(ctx, "{ [x] : x>0}"), Fraction(1))])
+    G = Frame.from_pieces(ctx, vars, [
+        (s(ctx, "{ [x] : x=0}"), Fraction(1)),
+        (s(ctx, "{ [x] : x>0}"), Fraction(0))])
+    
+    assert not F <= G
+    assert not G <= F
+
+def test_setitem():
+    ctx = isl.Context()
+    vars = {"x": (0,2)}
+    F = Frame.from_pieces(ctx, vars, [
+        (s(ctx, "{ [x] : x=0}"), Fraction(9,10)),
+        (s(ctx, "{ [x] : x>0}"), Fraction(1))])
+    G = Frame.from_pieces(ctx, vars, [
+        (s(ctx, "{ [x] : x=0}"), Fraction(1)),
+        (s(ctx, "{ [x] : x>0}"), Fraction(1))])
+    G[{"x": 0}] = Fraction(9,10)
+    assert F == G
+
+def test_zero_region():
+    ctx = isl.Context()
+    vars = {"x": (0,2)}
+    F = Frame.from_pieces(ctx, vars, [
+        (s(ctx, "{ [x] : x=0}"), Fraction(9,10)),
+        (s(ctx, "{ [x] : x>0}"), Fraction(1))])
+    G = Frame.from_pieces(ctx, vars, [
+        (s(ctx, "{ [x] : x<=1}"), Fraction(0)),
+        (s(ctx, "{ [x] : x=2}"), Fraction(1))])
+    F_ = F.zero_region({"x": (0,1)})
+    assert F_ == G
+
+def test_sum_over_region():
+    ctx = isl.Context()
+    vars = {"x": (0,2)}
+    F = Frame.from_pieces(ctx, vars, [
+        (s(ctx, "{ [x] : x=0}"), Fraction(9,10)),
+        (s(ctx, "{ [x] : x>0}"), Fraction(1))])
+    res = F.sum_over_region({"x": (0,1)})
+    assert res == Fraction(19, 10)

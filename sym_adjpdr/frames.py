@@ -208,13 +208,29 @@ class Frame:
     def sum(self):
         return barvinok_sum_pwqp(isl.PwQPolynomial.from_pw_aff(self.pw).intersect_domain(self.domain))
     
-    def __setitem__(self, key: dict[str, int], value: Fraction):
-        # isl_val = isl.Val(frac_to_isl(value))
-        # isl_val_pwaff = isl.PwAff.read_from_str(self.pw.domain, 
-        #             "{ " +  + " }")
-        # self.pw = 
-        pass
-        
+    def __setitem__(self, key: dict[str, int], value: Fraction):        
+        set_str = "{ [" + ",".join(key) + "] : "  + "and".join(f"{k}={v}" for k,v in key.items()) + " }"
+        sset = isl.Set(set_str)
+        pw_inter = self.pw.intersect_domain(sset.complement())
+        point_aff = isl.Aff.val_on_domain(sset.space, isl.Val(frac_to_isl(value))).intersect_domain(sset)
+        self.pw = pw_inter.union_add(point_aff)
+    
+    def __eq__(self, value):
+        return self.pw.is_equal(value.pw)
+    
+    def zero_region(self, region: dict[str, tuple[int, int]] | isl.Set):
+        if isinstance(region, dict):
+            region: isl.Set = make_domain(self.domain.get_ctx(), region)
+        aff = isl.Aff.zero_on_domain(region.get_space()).intersect_domain(region)
+        zeroed = self.pw.union_min(aff)
+        return Frame(zeroed, self.domain, self.variables, self.factor)
+    
+    def sum_over_region(self, region: dict[str, tuple[int, int]] | isl.Set):
+        if isinstance(region, dict):
+            region: isl.Set = make_domain(self.domain.get_ctx(), region)
+        regionalized = isl.PwQPolynomial.from_pw_aff(self.pw.intersect_domain(region))
+        return barvinok_sum_pwqp(regionalized)
+
 # ---------- FrameSet ----------
 
 @dataclass
