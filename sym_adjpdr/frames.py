@@ -127,8 +127,13 @@ class Frame:
             
             pw = pw_piece if pw is None else pw.union_max(pw_piece)
 
-        return Frame(pw, domain, variables, factor)
+        return Frame(pw.intersect_domain(domain), domain, variables, factor)
     
+    @staticmethod
+    def from_vector(ctx: isl.Context, variable: str, l: list[Fraction | int]):
+        pieces = [(isl.Set("{ [" + variable + " = " + str(i) + "] }"), Fraction(li)) for i, li in enumerate(l)]
+        return Frame.from_pieces(ctx, {variable: (0, len(l)-1)}, pieces)
+
     @staticmethod
     def zero(ctx: isl.Context, variables: Vars, factor: int = 1):
         return Frame.from_pieces(ctx, variables, [], factor)
@@ -216,7 +221,8 @@ class Frame:
         self.pw = pw_inter.union_add(point_aff)
     
     def __eq__(self, value):
-        return self.pw.is_equal(value.pw)
+        res = self <= value and value <= self
+        return res
     
     def zero_region(self, region: dict[str, tuple[int, int]] | isl.Set):
         if isinstance(region, dict):

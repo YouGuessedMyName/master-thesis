@@ -73,10 +73,10 @@ def join_maps_with_priority(map1: isl.Map, map2: isl.Map) -> isl.Map:
     combined = map1.union(map2_only).coalesce()
     return combined
 
-def to_indicator_function(s: isl.Set, constant_val: int = 1) -> isl.PwAff:
+def to_indicator_function(s: isl.Set, domain: isl.Set, constant_val: int = 1) -> isl.PwAff:
     restricted_one = isl.PwAff.val_on_domain(s, isl.Val(constant_val))
     zeroes = isl.PwAff.zero_on_domain(s.space)
-    res = zeroes.union_add(restricted_one)
+    res = zeroes.union_add(restricted_one).intersect_domain(domain)
     return res
 
 class Model:
@@ -137,7 +137,7 @@ class Model:
         # This will only work if constants are properly folded!!!
         self.isl_commands_theta = []
         for command in self.module.commands:
-            guard = conjuncts_to_isl_set(self.vars, command.guards, False).subtract(self.bad)
+            guard = conjuncts_to_isl_set(self.vars, command.guards, False)
             isl_branch_rev = []
             for p, updates in command.branches:
                 assert len(updates) == len(self.vars)
@@ -169,7 +169,7 @@ class Model:
         return Model(module, max_prob)
     
     def Phi(self, F: Frame) -> Frame:
-        result_pwaff = to_indicator_function(self.bad)
+        result_pwaff = to_indicator_function(self.bad, F.domain)
         for isl_guard, isl_branch in self.isl_commands_phi:
             guard_update_pwaff = None
             for mulAff_p, mp in isl_branch:
@@ -186,19 +186,28 @@ class Model:
     def Theta(self, F: Frame) -> Frame:
         result_pwaff = isl.PwAff.zero_on_domain(F.domain.space)
         for isl_guard, isl_branch in self.isl_commands_theta:
+            isl_guard_indicator = to_indicator_function(isl_guard, F.domain)
             guard_update_pwaff = None
             for mulAff_p, mp, mp_rev in isl_branch:
-                mappedF = F.pw.pullback_pw_multi_aff(mp_rev).intersect_domain(F.domain).coalesce()
+                mappedF = (F.pw * isl_guard_indicator)\
+                    .pullback_pw_multi_aff(mp_rev).intersect_domain(F.domain).coalesce()
                 multid = mappedF.mul(mulAff_p)
                 guard_update_pwaff = multid if guard_update_pwaff is None else guard_update_pwaff.union_add(multid)
-                print()
             # We need to intersect with the substituted guard?
             # Yes, but the phi way...
-            substituted_guard = isl_guard.apply(mp.as_map())
-            guarded_update_pwaff = guard_update_pwaff.intersect_domain(substituted_guard)
+            
+            guarded_update_pwaff = guard_update_pwaff
             result_pwaff = result_pwaff.union_add(guarded_update_pwaff)
-            print()
-        return Frame(result_pwaff.intersect_domain(F.domain).coalesce(), F.domain, F.variables, F.factor)
+        res = result_pwaff.intersect_domain(F.domain).coalesce()
+        return Frame(res, F.domain, F.variables, F.factor)
+
+    def PsiEq(self, W: Frame, r: Fraction) -> tuple[Frame, Fraction]:
+        
+    
+    def Psi(self, G: FrameSet) -> FrameSet:
+        result_eqs = []
+        for V, r in G.eqs:
+            
     
     def __str__(self) -> str:
         return f"""DTMC Model
