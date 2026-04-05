@@ -17,7 +17,8 @@ type Vars = dict[str, tuple[int, int]] # Represents a variable with a name and a
 TECHNICAL = "TECHNICAL" # Includes the factors that we abstract away from
 ABSTRACT = "ABSTRACT"
 VERBOSE = "VERBOSE"
-FRAME_PRINTING = VERBOSE
+VECTOR = "VECTOR"
+FRAME_PRINTING = ABSTRACT
 
 # ---------- Helpers ----------
 
@@ -88,6 +89,7 @@ class Frame:
     domain: isl.Set
     variables: Vars
     factor: int = 1
+    is_empty: bool = False
 
     # ---------- canonical constructor ----------
     @staticmethod
@@ -135,8 +137,16 @@ class Frame:
         return Frame.from_pieces(ctx, {variable: (0, len(l)-1)}, pieces)
 
     @staticmethod
-    def zero(ctx: isl.Context, variables: Vars, factor: int = 1):
+    def zeroes(ctx: isl.Context, variables: Vars, factor: int = 1):
         return Frame.from_pieces(ctx, variables, [], factor)
+    
+    @staticmethod
+    def ones(ctx: isl.Context, variables: Vars):
+        return Frame.from_pieces(ctx, variables, [(isl.Set("{[" + ",".join(variables) + "] : }"), Fraction(1))])
+    
+    @staticmethod
+    def empty(ctx: isl.Context, variables: Vars):
+        return Frame(None, make_domain(ctx, variables), variables, 1, True)
 
     # ---------- evaluation ----------
     def eval(self, s: State) -> Fraction:
@@ -156,6 +166,8 @@ class Frame:
 
     # ---------- partial order ----------
     def __le__(self, other: "Frame") -> bool:
+        if self.is_empty:
+            return True
         return self.pw.le_set(other.pw).is_equal(self.domain)
 
     def le_slow(self, other: "Frame") -> bool:
@@ -167,9 +179,11 @@ class Frame:
     # ---------- meet ----------
     @staticmethod
     def meet(f: "Frame", g: "Frame") -> "Frame":
+        if f.is_empty:
+            return f
         assert f.factor == g.factor
         pw = f.pw.min(g.pw)
-        return Frame(pw, f.domain, f.variables, f.factor)
+        return Frame(pw.coalesce(), f.domain, f.variables, f.factor)
 
     @staticmethod
     def meet_slow(f: "Frame", g: "Frame") -> "Frame":
@@ -200,12 +214,20 @@ class Frame:
         return total
     
     def __str__(self) -> str:
+        if self.is_empty:
+            return "[]"
         if FRAME_PRINTING == TECHNICAL:
             return "[" + str(self.factor) + "]" + str(self.pw)
         elif FRAME_PRINTING == ABSTRACT:
             return (divide_numbers_in_parentheses(str(self.pw), self.factor))
-        else:
+        elif FRAME_PRINTING == VERBOSE:
             return pretty_print_pwaff(self.pw, "f", self.factor)
+        else:
+            assert len(self.variables) == 1
+            var = list(self.variables)[0]
+            bound = self.variables[var][1]
+            vec = ", ".join([str(self.eval({var: i})) for i in range(bound+1)])
+            return "[" + vec + "]"
         
     def __sub__(self, other):
         return Frame(self.pw - other.pw, self.domain, self.variables, self.factor)
@@ -221,6 +243,8 @@ class Frame:
         self.pw = pw_inter.union_add(point_aff)
     
     def __eq__(self, value):
+        if self.is_empty:
+            return True
         res = self <= value and value <= self
         return res
     
@@ -236,16 +260,21 @@ class Frame:
             region: isl.Set = make_domain(self.domain.get_ctx(), region)
         regionalized = isl.PwQPolynomial.from_pw_aff(self.pw.intersect_domain(region))
         return barvinok_sum_pwqp(regionalized)
+    
+    def __mul__(self, other):
+        return Frame(self.pw * other.pw, self.domain, self.variables)
 
 # ---------- FrameSet ----------
 
 @dataclass
 class FrameSet:
     eqs: list[tuple[Frame, Fraction]]  # list of (Frame r, Fraction r0)
-    variables: Vars
+    vars: Vars
 
     # ---------- membership ----------
     def __contains__(self, F: Frame) -> bool:
+        if F.is_empty:
+            return True
         for (r, r0) in self.eqs:
             total = Frame.dot(r, F)
             if total > r0:
@@ -259,55 +288,76 @@ class FrameSet:
             if total > r0:
                 return False
         return True
+    
+    def is_empty(self):
+        for r,r0 in self.eqs:
+            if r0 < 0:
+                #print("empty",r,r0)
+                return True
+        return False
+    
+    @classmethod
+    def empty(cls, ctx: isl.Context, vars: Vars):
+        return cls([(Frame.empty(ctx, vars), -1)])
+    
+    def __str__(self):
+        if len(self.eqs) == 0:
+            return "{ v : True }" 
+        if self.is_empty():
+            return "{ }"
+        res = "{ v: "
+        for row, r in self.eqs:
+            res += str(row) + " * v <= " + str(r) + "; "
+        return res + "}"
 
     # ---------- subset inclusion ----------
-    def __le__(self, other: "FrameSet") -> bool:
-        # build region partition
-        regions = []
-        for (r, _) in self.eqs:
-            for (R, _) in r.pw.get_pieces():
-                regions.append(R)
+    # def __le__(self, other: "FrameSet") -> bool:
+    #     # build region partition
+    #     regions = []
+    #     for (r, _) in self.eqs:
+    #         for (R, _) in r.pw.get_pieces():
+    #             regions.append(R)
 
-        # counts
-        counts = [r.count_val().to_python() for r in regions]
+    #     # counts
+    #     counts = [r.count_val().to_python() for r in regions]
 
-        n = len(regions)
+    #     n = len(regions)
 
-        for (q, q0) in other.eqs:
-            c = []
-            for R in regions:
-                val = 0
-                for (Qreg, qv) in q.pw.get_pieces():
-                    if not R.intersect(Qreg).is_empty():
-                        val = qv.get_constant_val().to_python()
-                        break
-                c.append(val)
+    #     for (q, q0) in other.eqs:
+    #         c = []
+    #         for R in regions:
+    #             val = 0
+    #             for (Qreg, qv) in q.pw.get_pieces():
+    #                 if not R.intersect(Qreg).is_empty():
+    #                     val = qv.get_constant_val().to_python()
+    #                     break
+    #             c.append(val)
 
-            A = []
-            b = []
-            for (r, r0) in self.eqs:
-                row = []
-                for R in regions:
-                    val = 0
-                    for (Rr, rv) in r.pw.get_pieces():
-                        if not R.intersect(Rr).is_empty():
-                            val = rv.get_constant_val().to_python()
-                            break
-                    row.append(val)
-                A.append(row)
-                b.append(float(r0))
+    #         A = []
+    #         b = []
+    #         for (r, r0) in self.eqs:
+    #             row = []
+    #             for R in regions:
+    #                 val = 0
+    #                 for (Rr, rv) in r.pw.get_pieces():
+    #                     if not R.intersect(Rr).is_empty():
+    #                         val = rv.get_constant_val().to_python()
+    #                         break
+    #                 row.append(val)
+    #             A.append(row)
+    #             b.append(float(r0))
 
-            bounds = [(0, 1)] * n
+    #         bounds = [(0, 1)] * n
 
-            res = linprog(
-                c=[-ci for ci in c],
-                A_ub=A,
-                b_ub=b,
-                bounds=bounds,
-                method="highs"
-            )
+    #         res = linprog(
+    #             c=[-ci for ci in c],
+    #             A_ub=A,
+    #             b_ub=b,
+    #             bounds=bounds,
+    #             method="highs"
+    #         )
 
-            if res.success and -res.fun > float(q0):
-                return False
+    #         if res.success and -res.fun > float(q0):
+    #             return False
 
-        return True
+    #     return True

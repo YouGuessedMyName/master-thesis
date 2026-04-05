@@ -91,17 +91,30 @@ class Model:
     # The Set is a guard, the Aff is a probability value, the Map is the substitution itself.
     isl_commands_theta: list[tuple[isl.Set, list[isl.Aff, isl.MultiAff, isl.MultiAff]]]
     # Forward and backward substitutions.
+    domain: isl.Set
+    bad_frame: Frame
+    ctx: isl.Context
+    max_prob: Fraction
+    init: dict[str, Fraction]
+    good: isl.Set
+    good_frame: Frame
 
-    def __init__(self, module: Module, max_prob: Fraction, initial_state: dict[str, Fraction] | None = None):
-        
+    def __init__(self, ctx: isl.Context, module: Module, max_prob: Fraction, initial_state: dict[str, Fraction] | None = None):
+        self.init = {v: lb for v, (lb, _ub) in module.variables.items()}
+        self.max_prob = max_prob
+        self.ctx = ctx
         self.vars = module.variables
+        self.domain = make_domain(ctx, module.variables)
         # TODO for now we only support properties of the form Not (And [expr...])
         assert type(module.prop) == Not
         expr = module.prop.expr
         assert type(expr) == And
         conjuncts = expr.exprs
         self.bad = conjuncts_to_isl_set(module.variables, conjuncts, False)
-        
+        self.bad_frame = Frame(to_indicator_function(self.bad, self.domain), self.domain, self.vars)
+        self.good = conjuncts_to_isl_set(module.variables, conjuncts, True)
+        self.good_frame = Frame(to_indicator_function(self.good, self.domain), self.domain, self.vars)
+
         self.factor = module.lcm
         self.module = module
 
@@ -157,7 +170,7 @@ class Model:
             self.isl_commands_theta.append((guard, isl_branch_rev))
 
     @staticmethod
-    def from_prism_file(path: str, max_prob: Fraction, set_expected_result: bool = True):
+    def from_prism_file(ctx: isl.Context, path: str, max_prob: Fraction, set_expected_result: bool = True):
         with open(path, "r") as f:
             prism_str = f.read()
         tree = prism_parser.parse(prism_str)
@@ -166,7 +179,7 @@ class Model:
         if set_expected_result:
             module.set_expected_result(path)
         module.clear_constants()
-        return Model(module, max_prob)
+        return Model(ctx, module, max_prob)
     
     def Phi(self, F: Frame) -> Frame:
         result_pwaff = to_indicator_function(self.bad, F.domain)
@@ -201,13 +214,14 @@ class Model:
         res = result_pwaff.intersect_domain(F.domain).coalesce()
         return Frame(res, F.domain, F.variables, F.factor)
 
-    def PsiEq(self, W: Frame, r: Fraction) -> tuple[Frame, Fraction]:
-        
+    def __PsiEq(self, W: Frame, r: Fraction) -> tuple[Frame, Fraction]:
+        U = (self.good_frame * W)
+        t = r - W.sum_over_region(self.bad)
+        ThU = self.Theta(U)
+        return ThU, t
     
     def Psi(self, G: FrameSet) -> FrameSet:
-        result_eqs = []
-        for V, r in G.eqs:
-            
+        return FrameSet([self.__PsiEq(W, r) for W,r in G.eqs], G.vars)
     
     def __str__(self) -> str:
         return f"""DTMC Model

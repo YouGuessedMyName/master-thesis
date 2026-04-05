@@ -1,15 +1,14 @@
 from sym_adjpdr.prism import *
 from sym_adjpdr.model import *
 import islpy as isl
-from copy import deepcopy
 
 MAX_PROB = Fraction(9,10)
-
-model = Model.from_prism_file("prism/probline.prism", MAX_PROB, True)
+ctx = isl.Context()
+model = Model.from_prism_file(ctx, "tests/probline.prism", MAX_PROB, True)
 print(model.module)
 
 MAX_ITERS = 10
-F = Frame.zero(model.ctx, model.vars)
+F = Frame.zeroes(model.ctx, model.vars)
 F[{"x": 0}] = 1
 # print("prop", model.prop)
 # print("F", F)

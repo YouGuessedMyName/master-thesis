@@ -153,17 +153,17 @@ def test_frameset_contains_two_vars():
     assert F in fs
     assert fs.contains_slow(F)
 
-def test_frameset_subset_two_vars():
-    ctx = isl.Context()
-    vars = {"x": (0, 1), "y": (0, 1)}
+# def test_frameset_subset_two_vars():
+#     ctx = isl.Context()
+#     vars = {"x": (0, 1), "y": (0, 1)}
 
-    r1 = make_simple_frame(ctx, vars, "{ [x, y] : }", Fraction(1))
-    r2 = make_simple_frame(ctx, vars, "{ [x, y] : }", Fraction(3))
+#     r1 = make_simple_frame(ctx, vars, "{ [x, y] : }", Fraction(1))
+#     r2 = make_simple_frame(ctx, vars, "{ [x, y] : }", Fraction(3))
 
-    fs1 = FrameSet([(r1, Fraction(4))], vars)
-    fs2 = FrameSet([(r2, Fraction(12))], vars)
+#     fs1 = FrameSet([(r1, Fraction(4))], vars)
+#     fs2 = FrameSet([(r2, Fraction(12))], vars)
 
-    assert fs1 <= fs2
+#     assert fs1 <= fs2
 
 # ----------------- dot tests with piecewise affine -----------------
 

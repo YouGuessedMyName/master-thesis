@@ -10,7 +10,7 @@ type Vars = dict[str, tuple[int, int]] # Represents a variable with a name and a
 
 from lark import Lark, Transformer
 
-with open("adjpdr/grammar.ebnf", "r") as f:
+with open("sym_adjpdr/grammar.ebnf", "r") as f:
     GRAMMAR = f.read()
 
 prism_parser = Lark(GRAMMAR, start="start")
@@ -39,11 +39,15 @@ class Module:
 
     def clear_constants(self):
         """Replace constants in variables, guards, branches, labels, and property."""
-        for cname, cval in self.constants.items():
+        iterates = list(self.constants.items()) + [("undefined", -1)] if len(self.constants) == 0 else list(self.constants.items())
+        for cname, cval in iterates: # TODO hack
             const_expr = cval
             # Update variable bounds
             for name, (lb, ub) in self.variables.items():
-                self.variables[name] = int(lb.substitute(cname, cval).eval().value), int(ub.substitute(cname, cval).eval().value)
+                try:
+                    self.variables[name] = int(lb.substitute(cname, cval).eval().value), int(ub.substitute(cname, cval).eval().value)
+                except:
+                    pass # TODO we need to separate replacing from eval...
             # Update commands
             for c in self.commands:
                 c.guards = [g.substitute(cname, cval).eval() for g in c.guards]

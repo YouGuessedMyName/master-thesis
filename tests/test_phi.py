@@ -4,9 +4,9 @@ import islpy as isl
 from copy import deepcopy
 
 MAX_PROB = Fraction(9,10)
-
-pl = Model.from_prism_file("prism/probline.prism", MAX_PROB, True)
 ctx = isl.Context()
+pl = Model.from_prism_file(ctx, "tests/probline.prism", MAX_PROB, True)
+
 
 def test_phi_probline():
     var = "x"

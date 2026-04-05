@@ -5,8 +5,8 @@ const int N = 100;
 module line
     x : [0..N-1];
 
-    [] x=N-1 -> 1: (x'=x);
-    [] x<N-1 -> 1: (x'=x+1);
+    [] x < N-1 -> 1/2: (x'=x) + 1/2 : (x'=x+1);
+    [] x = N-1 -> 1: (x'=x);
 endmodule
 
 label "bad" = x = N-1;
