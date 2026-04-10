@@ -43499,7 +43499,7 @@ SVGCanvasElement.prototype.setAttribute = function(prop, val) {
 // exports.Element = SVGCanvasElement;
 </script>
     <style type="text/css">
-      #GBpecovLFF {
+      #osYoQRZptg {
         width: 800px;
         height: 600px;
         border: 1px solid lightgray;
@@ -43507,7 +43507,7 @@ SVGCanvasElement.prototype.setAttribute = function(prop, val) {
     </style>
   </head>
   <body>
-    <div id="GBpecovLFF"></div>
+    <div id="osYoQRZptg"></div>
     <script type="text/javascript">
         //js
 class NetworkWrapper {
@@ -43620,54 +43620,80 @@ class NetworkWrapper {
     var nodes_local = new vis.DataSet([{ id: 0, label: `0
 init`, group: "states" },
 { id: 1, label: `1
-`, group: "states" },
+bad`, group: "states" },
 { id: 2, label: `2
-goal,deadlock`, group: "states" },
-{ id: 3, label: `3
 `, group: "states" },
+{ id: 3, label: `3
+bad`, group: "states" },
 { id: 4, label: `4
 `, group: "states" },
 { id: 5, label: `5
-`, group: "states" },
+bad`, group: "states" },
 { id: 6, label: `6
 `, group: "states" },
 { id: 7, label: `7
-`, group: "states" },
+bad`, group: "states" },
 { id: 8, label: `8
 `, group: "states" },
 { id: 9, label: `9
-`, group: "states" },
+bad`, group: "states" },
 { id: 10, label: `10
 `, group: "states" },
 { id: 11, label: `11
-`, group: "states" },
+bad`, group: "states" },
 { id: 12, label: `12
+`, group: "states" },
+{ id: 13, label: `13
+bad`, group: "states" },
+{ id: 14, label: `14
+`, group: "states" },
+{ id: 15, label: `15
+bad`, group: "states" },
+{ id: 16, label: `16
+`, group: "states" },
+{ id: 17, label: `17
+bad`, group: "states" },
+{ id: 18, label: `18
+`, group: "states" },
+{ id: 19, label: `19
+bad`, group: "states" },
+{ id: 20, label: `20
 deadlock`, group: "states" },
+{ id: 21, label: `21
+bad,deadlock`, group: "states" },
 ]);
-    var edges_local = new vis.DataSet([{ from: 0, to: 1, label: "1/2" },
-{ from: 0, to: 2, label: "1/2" },
-{ from: 1, to: 0, label: "1/20" },
-{ from: 1, to: 3, label: "19/20" },
-{ from: 2, to: 2, label: "1" },
-{ from: 3, to: 0, label: "1/20" },
-{ from: 3, to: 4, label: "19/20" },
-{ from: 4, to: 0, label: "1/20" },
-{ from: 4, to: 5, label: "19/20" },
-{ from: 5, to: 0, label: "1/20" },
-{ from: 5, to: 6, label: "19/20" },
-{ from: 6, to: 0, label: "1/20" },
-{ from: 6, to: 7, label: "19/20" },
-{ from: 7, to: 0, label: "1/20" },
-{ from: 7, to: 8, label: "19/20" },
-{ from: 8, to: 0, label: "1/20" },
-{ from: 8, to: 9, label: "19/20" },
-{ from: 9, to: 0, label: "1/20" },
-{ from: 9, to: 10, label: "19/20" },
-{ from: 10, to: 0, label: "1/20" },
-{ from: 10, to: 11, label: "19/20" },
-{ from: 11, to: 0, label: "1/20" },
-{ from: 11, to: 12, label: "19/20" },
-{ from: 12, to: 12, label: "1" },
+    var edges_local = new vis.DataSet([{ from: 0, to: 1, label: "1/20" },
+{ from: 0, to: 2, label: "19/20" },
+{ from: 1, to: 3, label: "1" },
+{ from: 2, to: 3, label: "1/20" },
+{ from: 2, to: 4, label: "19/20" },
+{ from: 3, to: 5, label: "1" },
+{ from: 4, to: 5, label: "1/20" },
+{ from: 4, to: 6, label: "19/20" },
+{ from: 5, to: 7, label: "1" },
+{ from: 6, to: 7, label: "1/20" },
+{ from: 6, to: 8, label: "19/20" },
+{ from: 7, to: 9, label: "1" },
+{ from: 8, to: 9, label: "1/20" },
+{ from: 8, to: 10, label: "19/20" },
+{ from: 9, to: 11, label: "1" },
+{ from: 10, to: 11, label: "1/20" },
+{ from: 10, to: 12, label: "19/20" },
+{ from: 11, to: 13, label: "1" },
+{ from: 12, to: 13, label: "1/20" },
+{ from: 12, to: 14, label: "19/20" },
+{ from: 13, to: 15, label: "1" },
+{ from: 14, to: 15, label: "1/20" },
+{ from: 14, to: 16, label: "19/20" },
+{ from: 15, to: 17, label: "1" },
+{ from: 16, to: 17, label: "1/20" },
+{ from: 16, to: 18, label: "19/20" },
+{ from: 17, to: 19, label: "1" },
+{ from: 18, to: 19, label: "1/20" },
+{ from: 18, to: 20, label: "19/20" },
+{ from: 19, to: 21, label: "1" },
+{ from: 20, to: 20, label: "1" },
+{ from: 21, to: 21, label: "1" },
 ]);
     var options_local = {
   "__fake_macros": {
@@ -43841,8 +43867,8 @@ deadlock`, group: "states" },
   "physics": true,
   "autoResize": true
 };
-    var container_local = document.getElementById("GBpecovLFF");
-    var nw_GBpecovLFF = new NetworkWrapper(nodes_local, edges_local, options_local, container_local)
+    var container_local = document.getElementById("osYoQRZptg");
+    var nw_osYoQRZptg = new NetworkWrapper(nodes_local, edges_local, options_local, container_local)
     
     </script>
   </body>

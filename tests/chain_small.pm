@@ -1,19 +1,20 @@
 dtmc
 
-const M = 1;
-const N= 5*M;
+const int N = 50;
 
 module grid
 
-	c : [0..N] init 0;
-	g : bool init false;
+	c : [0..N];
+	g : [0..1];
 
-	[] (c < N) -> (0.05): (g'=true) + 0.95: (c'=c+1);
+	[] c < N & g = 0 ->   	(1/20): (c'=c) & (g'=g+1)
+						+ (1-1/20): (c'=c+1) & (g'=g);
+	[] c < N & g = 1 ->   	1: (c'=c+1) & (g'=g);
 
 endmodule
 
 
-label "goal" = g=true;
+label "bad" = g=1;
 
 // The inductive invariant is exponential, but we should approximate it using pwaff stuff?
 // Possible alternative: just do exponentials using z3 on value iteration instead?

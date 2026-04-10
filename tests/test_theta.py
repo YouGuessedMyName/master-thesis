@@ -6,6 +6,7 @@ from copy import deepcopy
 MAX_PROB = Fraction(9,10)
 ctx = isl.Context()
 pl = Model.from_prism_file(ctx, "tests/probline.prism", MAX_PROB, True)
+cs = Model.from_prism_file(ctx, "tests/chain_small.pm", MAX_PROB, True)
 
 
 def test_equality():
@@ -32,3 +33,12 @@ def test_theta_probline():
     assert ThetaF2 == F3
     assert ThetaF3 == F4
     assert ThetaF4 == F5
+
+def test_theta_chain_small():
+    F = Frame.from_pieces(ctx, cs.vars, [(isl.Set("{ [c=0,g=0] }"), Fraction(1))])
+    Fexp = Frame.from_pieces(ctx, cs.vars, [(isl.Set("{ [c=1,g=0] }"), Fraction(19,20)), (isl.Set("{ [c=0,g=1] }"), Fraction(1,20))])
+    ThetaF = cs.Theta(F)
+    strFexp = str(Fexp)
+    strThetaF = str(ThetaF)
+    cs_ = cs
+    assert ThetaF == Fexp

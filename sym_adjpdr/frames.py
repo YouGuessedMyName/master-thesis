@@ -223,10 +223,8 @@ class Frame:
         elif FRAME_PRINTING == VERBOSE:
             return pretty_print_pwaff(self.pw, "f", self.factor)
         else:
-            assert len(self.variables) == 1
-            var = list(self.variables)[0]
-            bound = self.variables[var][1]
-            vec = ", ".join([str(self.eval({var: i})) for i in range(bound+1)])
+            prod = product(*[range(lb, ub+1) for _, (lb,ub) in self.variables.items()])
+            vec = ",".join([str(self.eval({var: val for var, val in zip(self.variables, vals)})) for vals in prod])
             return "[" + vec + "]"
         
     def __sub__(self, other):
@@ -236,7 +234,7 @@ class Frame:
         return barvinok_sum_pwqp(isl.PwQPolynomial.from_pw_aff(self.pw).intersect_domain(self.domain))
     
     def __setitem__(self, key: dict[str, int], value: Fraction):        
-        set_str = "{ [" + ",".join(key) + "] : "  + "and".join(f"{k}={v}" for k,v in key.items()) + " }"
+        set_str = "{ [" + ",".join(key) + "] : "  + " and ".join(f"{k}={v}" for k,v in key.items()) + " }"
         sset = isl.Set(set_str)
         pw_inter = self.pw.intersect_domain(sset.complement())
         point_aff = isl.Aff.val_on_domain(sset.space, isl.Val(frac_to_isl(value))).intersect_domain(sset)
