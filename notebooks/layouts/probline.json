@@ -1,0 +1,172 @@
+{
+  "__fake_macros": {
+    "__group_macro": {
+      "borderWidth": 1,
+      "color": {
+        "background": "white",
+        "border": "black",
+        "highlight": {
+          "background": "white",
+          "border": "red"
+        }
+      },
+      "shape": "ellipse",
+      "mass": 1,
+      "font": {
+        "color": "black",
+        "size": 14
+      }
+    }
+  },
+  "edit_groups": {
+    "groups": [
+      "states",
+      "actions"
+    ]
+  },
+  "groups": {
+    "actions": {
+      "borderWidth": 1,
+      "color": {
+        "background": "lightblue",
+        "border": "black",
+        "highlight": {
+          "background": "white",
+          "border": "red"
+        }
+      },
+      "shape": "box",
+      "mass": 1,
+      "font": {
+        "color": "black",
+        "size": 14
+      }
+    },
+    "scheduled_actions": {
+      "shape": "box",
+      "color": {
+        "background": "pink",
+        "border": "red"
+      }
+    },
+    "states": {
+      "borderWidth": 1,
+      "color": {
+        "background": "white",
+        "border": "black",
+        "highlight": {
+          "background": "white",
+          "border": "red"
+        }
+      },
+      "shape": "ellipse",
+      "mass": 1,
+      "font": {
+        "color": "black",
+        "size": 14
+      }
+    }
+  },
+  "reload_button": false,
+  "edges": {
+    "arrows": "to",
+    "font": {
+      "color": "black",
+      "size": 14,
+      "strokeColor": "white",
+      "strokeWidth": 2
+    },
+    "color": {
+      "color": "black"
+    },
+    "width": 1
+  },
+  "numbers": {
+    "visible": true,
+    "fractions": true,
+    "digits": 5,
+    "denominator_limit": 1000
+  },
+  "results": {
+    "show_results": true,
+    "result_symbol": "\u2606",
+    "result_colors": true,
+    "min_result_color": "#ffffff",
+    "max_result_color": "#ff0000"
+  },
+  "state_properties": {
+    "show_ids": true,
+    "show_rewards": true,
+    "reward_symbol": "\u20ac",
+    "show_zero_rewards": true,
+    "show_observations": true,
+    "observation_symbol": "\u0298"
+  },
+  "layout": {
+    "randomSeed": 5
+  },
+  "misc": {
+    "enable_physics": true,
+    "width": 800,
+    "height": 600,
+    "explore": false
+  },
+  "saving": {
+    "relative_path": true,
+    "filename": "layouts/probline.json",
+    "save_button": false,
+    "load_button": false
+  },
+  "positions": {
+    "0": {
+      "x": 182,
+      "y": 244
+    },
+    "1": {
+      "x": 62,
+      "y": 296
+    },
+    "2": {
+      "x": 140,
+      "y": 120
+    },
+    "3": {
+      "x": 6,
+      "y": 179
+    },
+    "4": {
+      "x": 83,
+      "y": 1
+    },
+    "5": {
+      "x": -46,
+      "y": 60
+    },
+    "6": {
+      "x": 25,
+      "y": -110
+    },
+    "7": {
+      "x": -103,
+      "y": -48
+    },
+    "8": {
+      "x": -33,
+      "y": -233
+    },
+    "9": {
+      "x": -167,
+      "y": -169
+    },
+    "10": {
+      "x": 23,
+      "y": -356
+    },
+    "11": {
+      "x": -297,
+      "y": -205
+    }
+  },
+  "physics": true,
+  "autoResize": true
+}

@@ -6,10 +6,10 @@ from sym_adjpdr.heuristics import *
 MAX_PROB = Fraction(1,4)
 
 ctx = isl.Context()
-M = Model.from_prism_file(ctx, "prism/line.prism", MAX_PROB, True)
+M = Model.from_prism_file(ctx, "prism/probline_new.prism", MAX_PROB, True)
 print("prop", M.prop)
 
-heurs = [Cs]
-used = Cs
+heurs = []
+used = Citer
 
-testAdjointPDRdown(M, heurs, used, propagate_=False, print_=True, assert_=True, loop_check=True)
+testAdjointPDRdown(M, heurs, used, propagate_=False, print_=False, assert_=True, loop_check=True)

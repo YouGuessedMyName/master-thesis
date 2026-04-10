@@ -89,6 +89,7 @@ def adjointPDRdown(M: Model, do_propagate: bool, heuristics: list, used_heuristi
             if assert_:
                 assert F[k-1] not in ZZ
                 #assert M.Psi(Gk) <= ZZ TODO
+                # What about exists n, s.t. Psi^n(Gk) <= ZZ??
 
             G.insert(0, ZZ)
 

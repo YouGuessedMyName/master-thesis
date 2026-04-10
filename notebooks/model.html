@@ -43499,7 +43499,7 @@ SVGCanvasElement.prototype.setAttribute = function(prop, val) {
 // exports.Element = SVGCanvasElement;
 </script>
     <style type="text/css">
-      #tjnkRKUUtA {
+      #GBpecovLFF {
         width: 800px;
         height: 600px;
         border: 1px solid lightgray;
@@ -43507,7 +43507,7 @@ SVGCanvasElement.prototype.setAttribute = function(prop, val) {
     </style>
   </head>
   <body>
-    <div id="tjnkRKUUtA"></div>
+    <div id="GBpecovLFF"></div>
     <script type="text/javascript">
         //js
 class NetworkWrapper {
@@ -43617,15 +43617,57 @@ class NetworkWrapper {
     </script>
     <script type="text/javascript">
         //js
-    var nodes_local = new vis.DataSet([{ id: 0, label: `init`, group: "states" },
-{ id: 1, label: ``, group: "states" },
-{ id: 2, label: ``, group: "states" },
-{ id: 3, label: `bad`, group: "states" },
+    var nodes_local = new vis.DataSet([{ id: 0, label: `0
+init`, group: "states" },
+{ id: 1, label: `1
+`, group: "states" },
+{ id: 2, label: `2
+goal,deadlock`, group: "states" },
+{ id: 3, label: `3
+`, group: "states" },
+{ id: 4, label: `4
+`, group: "states" },
+{ id: 5, label: `5
+`, group: "states" },
+{ id: 6, label: `6
+`, group: "states" },
+{ id: 7, label: `7
+`, group: "states" },
+{ id: 8, label: `8
+`, group: "states" },
+{ id: 9, label: `9
+`, group: "states" },
+{ id: 10, label: `10
+`, group: "states" },
+{ id: 11, label: `11
+`, group: "states" },
+{ id: 12, label: `12
+deadlock`, group: "states" },
 ]);
-    var edges_local = new vis.DataSet([{ from: 0, to: 1, label: "1" },
-{ from: 1, to: 2, label: "1" },
-{ from: 2, to: 3, label: "1" },
-{ from: 3, to: 3, label: "1" },
+    var edges_local = new vis.DataSet([{ from: 0, to: 1, label: "1/2" },
+{ from: 0, to: 2, label: "1/2" },
+{ from: 1, to: 0, label: "1/20" },
+{ from: 1, to: 3, label: "19/20" },
+{ from: 2, to: 2, label: "1" },
+{ from: 3, to: 0, label: "1/20" },
+{ from: 3, to: 4, label: "19/20" },
+{ from: 4, to: 0, label: "1/20" },
+{ from: 4, to: 5, label: "19/20" },
+{ from: 5, to: 0, label: "1/20" },
+{ from: 5, to: 6, label: "19/20" },
+{ from: 6, to: 0, label: "1/20" },
+{ from: 6, to: 7, label: "19/20" },
+{ from: 7, to: 0, label: "1/20" },
+{ from: 7, to: 8, label: "19/20" },
+{ from: 8, to: 0, label: "1/20" },
+{ from: 8, to: 9, label: "19/20" },
+{ from: 9, to: 0, label: "1/20" },
+{ from: 9, to: 10, label: "19/20" },
+{ from: 10, to: 0, label: "1/20" },
+{ from: 10, to: 11, label: "19/20" },
+{ from: 11, to: 0, label: "1/20" },
+{ from: 11, to: 12, label: "19/20" },
+{ from: 12, to: 12, label: "1" },
 ]);
     var options_local = {
   "__fake_macros": {
@@ -43724,7 +43766,7 @@ class NetworkWrapper {
     "max_result_color": "#ff0000"
   },
   "state_properties": {
-    "show_ids": false,
+    "show_ids": true,
     "show_rewards": true,
     "reward_symbol": "\u20ac",
     "show_zero_rewards": true,
@@ -43742,16 +43784,65 @@ class NetworkWrapper {
   },
   "saving": {
     "relative_path": true,
-    "filename": "layouts/NAME.json",
+    "filename": "layouts/probline.json",
     "save_button": false,
     "load_button": false
   },
-  "positions": {},
+  "positions": {
+    "0": {
+      "x": 182,
+      "y": 244
+    },
+    "1": {
+      "x": 62,
+      "y": 296
+    },
+    "2": {
+      "x": 140,
+      "y": 120
+    },
+    "3": {
+      "x": 6,
+      "y": 179
+    },
+    "4": {
+      "x": 83,
+      "y": 1
+    },
+    "5": {
+      "x": -46,
+      "y": 60
+    },
+    "6": {
+      "x": 25,
+      "y": -110
+    },
+    "7": {
+      "x": -103,
+      "y": -48
+    },
+    "8": {
+      "x": -33,
+      "y": -233
+    },
+    "9": {
+      "x": -167,
+      "y": -169
+    },
+    "10": {
+      "x": 23,
+      "y": -356
+    },
+    "11": {
+      "x": -297,
+      "y": -205
+    }
+  },
   "physics": true,
   "autoResize": true
 };
-    var container_local = document.getElementById("tjnkRKUUtA");
-    var nw_tjnkRKUUtA = new NetworkWrapper(nodes_local, edges_local, options_local, container_local)
+    var container_local = document.getElementById("GBpecovLFF");
+    var nw_GBpecovLFF = new NetworkWrapper(nodes_local, edges_local, options_local, container_local)
     
     </script>
   </body>

@@ -1,5 +1,6 @@
 from adjpdr.helpers import Frac, MDP, V, DENOM_LIMIT
 import stormvogel as sv
+import stormpy
 
 def example_21(lambda_=1/4):
     S = [0,1,2,3]
@@ -233,6 +234,21 @@ def ngrid_dtmc(N=5, lambda_=0.5):
     problem = from_stormvogel_problem(model, lambda_=lambda_, bad_label="bad")
     return problem
 
+def nline(N=5, lambda_=0.5):
+    def P(s,_a,s_):
+        if s == s_ - 1:
+            return Frac(1)
+        if s == s_ and s == N-1:
+            return Frac(1)
+        return Frac(0)
+    def av(_):
+        return ["a"]
+    S = list(range(N))
+    B = {N-1}
+    PROP = V([Frac(lambda_).limit_denominator(DENOM_LIMIT)]
+             + [Frac(1) for _ in range(N-1)])
+    return MDP(S, P, av, B, PROP, 1)
+
 def ngrid(N=5, lambda_=0.5):
     ACTION_SEMANTICS = {"l": (-1, 0), "r": (1, 0), "u": (0, -1), "d": (0, 1)}
 
@@ -266,3 +282,8 @@ def ngrid(N=5, lambda_=0.5):
     )
     problem = from_stormvogel_problem(model, lambda_=lambda_, bad_label="bad")
     return problem
+
+def from_prism_file(path: str, lambda_:float, bad_label="bad"):
+    prism_propgram = stormpy.parse_prism_program(path)
+    model = sv.stormpy_utils.from_prism(prism_propgram)
+    return from_stormvogel_problem(model, lambda_, bad_label)

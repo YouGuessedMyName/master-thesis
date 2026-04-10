@@ -55,21 +55,32 @@ def C01(F:V, Gk:LowerSet, M: MDP) -> V:
         for s in range(len(r))
     ])
 
+def C01_alt(F:V, Gk:LowerSet, M: MDP) -> V:
+    """Should be better? Swap the ceiling situation for just a 1."""
+    assert len(Gk) == 1
+    r, _ = Gk.eqs[0]
+    meetZk = []
+    cb = Cb(F, Gk, M, meetZk=meetZk) # Modify by reference to check if it was empty.
+    phi_applied = M.Phi(F)
+    return V([
+        Frac(1) if r[s] == 0 and len(meetZk) != 0
+        else cb[s]
+        for s in range(len(r))
+    ])
+
 def COpt(F: V, Gk: LowerSet, M: MDP) -> V:
     assert len(Gk) == 1
     r, r0 = Gk.eqs[0]
     phi_applied = M.Phi(F)
 
     vars_ = [Real(f"x_{i}") for i in range(len(F))]
-    reward = Real("reward")
     opt = Optimize()
     for x in vars_:
         opt.add(x >= 0)
         opt.add(x <= 1)
     opt.add(Sum([r[i] * vars_[i] for i in range(len(vars_)) if r[i] != 0]) <= r0)
     opt.add([vars_[i] >= phi_applied[i] for i in range(len(vars_))])
-    opt.add(reward == Sum(vars_))
-    h = opt.maximize(reward)
+    opt.maximize(Sum(vars_))
     opt.check()
     model = opt.model()
     sol = [model[x].as_fraction() for x in vars_]
@@ -82,3 +93,22 @@ def COpt(F: V, Gk: LowerSet, M: MDP) -> V:
             res.append(phi_applied[s])
 
     return V([Frac(x).limit_denominator(DENOM_LIMIT) for x in res])
+
+def COpt2(F: V, Gk: LowerSet, M: MDP) -> V:
+    assert len(Gk) == 1
+    r, r0 = Gk.eqs[0]
+    phi_applied = M.Phi(F)
+
+    vars_ = [Real(f"x_{i}") for i in range(len(F))]
+    opt = Optimize()
+    for x in vars_:
+        opt.add(x >= 0)
+        opt.add(x <= 1)
+    opt.add(Sum([r[i] * vars_[i] for i in range(len(vars_)) if r[i] != 0]) <= r0)
+    opt.add([vars_[i] >= phi_applied[i] for i in range(len(vars_))])
+    opt.maximize(Sum(vars_))
+    opt.check()
+    model = opt.model()
+    sol = [model[x].as_fraction() for x in vars_]
+
+    return V([Frac(x).limit_denominator(DENOM_LIMIT) for x in sol])

@@ -18,7 +18,7 @@ TECHNICAL = "TECHNICAL" # Includes the factors that we abstract away from
 ABSTRACT = "ABSTRACT"
 VERBOSE = "VERBOSE"
 VECTOR = "VECTOR"
-FRAME_PRINTING = ABSTRACT
+FRAME_PRINTING = VECTOR
 
 # ---------- Helpers ----------
 

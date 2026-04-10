@@ -15,3 +15,7 @@ endmodule
 
 
 label "goal" = g=true;
+
+/*
+Here the chain is split into two parts which behave similar to the ind inv of the single chain individually.
+*/

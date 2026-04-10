@@ -208,7 +208,7 @@ def adjointPDRdown(M: MDP, do_propagate: bool, heuristics: list, used_heuristic:
                 if loop_check:
                     heuristics_so_far[iteration][heuristic.__name__] = zh
                 if assert_:
-                    assert zh in Gk
+                    assert zh in Gk, f"\n     zh: {zh}\nGk: {Gk}"
                     assert M.Phi(meet([F[k-1], zh])) <= zh
                     for zi in zh:
                         assert type(zi) == Frac

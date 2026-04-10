@@ -39,7 +39,7 @@ label: "label" "\"" NAME "\"" "=" guards ";"
        | VAR
        | "(" expr ")"
 
-VAR: NAME # Var becomes a z3 int whereas name becomes a str
+VAR: NAME   // Var becomes a z3 int whereas name becomes a str
 
 %import common.CNAME -> NAME
 %import common.NUMBER
@@ -47,6 +47,19 @@ VAR: NAME # Var becomes a z3 int whereas name becomes a str
 %import common.ESCAPED_STRING -> STRING
 %import common.NEWLINE
 %import common.WS_INLINE
+
+// ----------------------
+// Comment support
+// ----------------------
+
+// Single-line comments (C++ / Java style)
+COMMENT_SINGLE: /\/\/[^\n]*/
+
+// Multi-line comments (C style)
+COMMENT_MULTI: /\/\*[\s\S]*?\*\//
+
+%ignore COMMENT_SINGLE
+%ignore COMMENT_MULTI
 
 %ignore WS_INLINE
 %ignore NEWLINE
