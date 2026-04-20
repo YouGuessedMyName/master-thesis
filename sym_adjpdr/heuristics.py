@@ -9,6 +9,20 @@ def Ca(M: Model) -> FrameSet:
 def Cs(F: Frame, _G: FrameSet, M: Model) -> Frame:
     return M.Phi(F)
 
+def Cs1(F: Frame, G: FrameSet, M: Model) -> Frame:
+    zero_set = G.eqs[0][0].pw.zero_set()
+    phi = M.Phi(F)
+    res = phi.set_region(zero_set, isl.Val(1))
+    return res
+
+def Cmax(F: Frame, _G: FrameSet, M: Model):
+    # TODO: heuristic that takes Cs, but for all values that matter in G, 
+    # they are maximized s.t. the thing still holds.
+    # Alternatively, it may even be viable to make a version of Cb because the G set will be sparse in most benchmark models anyway?
+    # However, I suspect that it will be faster in practice to do something even simpler!
+    # We could even have a case distinction where it counts the amount of states, and based on that decides what is viable.
+    # For the simple line example it even suffices to just account for the one thing.
+
 def Citer(F: Frame, G: FrameSet, M: Model):
     """Conflict heuristic based on simply doing value iteration a couple of times."""
     MAX_ITERS = 1000
@@ -30,8 +44,6 @@ def COpt(F: Frame, G: FrameSet, M: Model) -> Frame:
 def Cp(F: Frame, G: FrameSet, M: Model) -> Frame:
     """Conflict heuristic based on linear generalization."""
     # TODO
-
-
 
 def De(_F: Frame, G: FrameSet, M: Model, _print_policiy: bool = False) -> FrameSet:
     return M.Psi(G)

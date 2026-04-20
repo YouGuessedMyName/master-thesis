@@ -1,6 +1,7 @@
 from sym_adjpdr.frames import *
 from sym_adjpdr.model import *
 from sym_adjpdr.heuristics import *
+from sym_adjpdr.generalization import *
 
 def print_progress(iteration, F, G, k, n, M):
     print(f"\n{iteration}")
@@ -15,7 +16,8 @@ def print_progress(iteration, F, G, k, n, M):
         #print("Phi(F_k-1)", str_list(Phi(F[k-1], M)))
     # We don't need to return, F is modified by reference.
 
-def adjointPDRdown(M: Model, do_propagate: bool, heuristics: list, used_heuristic: Callable, print_ : bool = True, assert_: bool = True, loop_check: bool = True):
+def adjointPDRdown(M: Model, do_propagate: bool, do_generalization: bool, heuristics: list, used_heuristic: Callable, 
+                   print_ : bool = True, assert_: bool = True, loop_check: bool = True):
     assert used_heuristic in heuristics
     states_so_far = []
     heuristics_so_far = {}
@@ -112,17 +114,31 @@ def adjointPDRdown(M: Model, do_propagate: bool, heuristics: list, used_heuristi
                     assert zh in Gk
                     assert M.Phi(Frame.meet(F[k-1], zh)) <= zh
             
-            F = ([Frame.meet(Fj, z) for (j, Fj) in enumerate(F) if j <= k]) + [F[j] for j in range(k+1, n)]
+            F = [Frame.meet(Fj, z) for (j, Fj) in enumerate(F) if j <= k] + [F[j] for j in range(k+1, n)]
+            
+                
+            # GENERALIZATION
+            if do_generalization:
+                nz = non_zero_states(Gk)
+                for p in iterate_isl_set(nz):
+                    delta = F[k].pw.eval(p)
+                    Fgend = linear_generalization(F[k-1], p, delta, M)
+                    if Fgend < F[k]:
+                        print("Fk", F[k])
+                        print("Fgend", Fgend)
+                        pass
+                        F = [Frame.meet(Fj, Fgend) for (j, Fj) in enumerate(F) if j <= k] + [F[j] for j in range(k+1, n)]
+
             if do_propagate:
                 F_meet_conjuncts = [Fj_conjuncts + [z] for (j, Fj_conjuncts) in enumerate(F_meet_conjuncts) if j <= k] \
                                 + [F_meet_conjuncts[j] for j in range(k+1, n)]
             G.pop(0)
 
-def testAdjointPDRdown(M: Model, heuristics, used_heuristic, propagate_= False, print_=True, assert_=True, loop_check=True):
+def testAdjointPDRdown(M: Model, heuristics, used_heuristic, propagate_= False, generalization_=False, print_=True, assert_=True, loop_check=True):
     if not used_heuristic in heuristics:
         heuristics.append(used_heuristic)
     print("Start")
-    res, states_list, heuristics_list = adjointPDRdown(M, propagate_, heuristics, used_heuristic, print_, assert_, loop_check)
+    res, states_list, heuristics_list = adjointPDRdown(M, propagate_, generalization_, heuristics, used_heuristic, print_, assert_, loop_check)
     assert res is not None
     
     if M.max_prob >= Fraction(M.module.expected_result):

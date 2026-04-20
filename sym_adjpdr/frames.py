@@ -93,8 +93,8 @@ class Frame:
 
     # ---------- canonical constructor ----------
     @staticmethod
-    def from_pieces(ctx: isl.Context, variables: Vars, pieces: Iterator[tuple[isl.Set, Fraction | isl.Aff]], 
-                    factor: int = 1, default_val: Fraction = Fraction(0)):
+    def from_pieces(ctx: isl.Context, variables: Vars, pieces: Iterator[tuple[isl.Set, Fraction | isl.Val | isl.Aff]], 
+                    factor: int = 1, default_val: Fraction | isl.Val = Fraction(0)):
         domain = make_domain(ctx, variables)
 
         used = isl.Set.empty(domain.get_space())
@@ -113,6 +113,9 @@ class Frame:
                 aff = isl.Aff.zero_on_domain(space)
                 val_isl = isl.Val(frac_to_isl(val), clean.get_ctx())
                 aff = aff.set_constant_val(val_isl)
+            elif type(val) == isl.Val:
+                aff = isl.Aff.zero_on_domain(space)
+                aff = aff.set_constant_val(val)
             else:
                 aff = val
 
@@ -123,7 +126,10 @@ class Frame:
         remaining = domain.subtract(used)
         if not remaining.is_empty():
             space = remaining.get_space()
-            isl_default_val = isl.Val(frac_to_isl(default_val))
+            if type(default_val) == Fraction:
+                isl_default_val = isl.Val(frac_to_isl(default_val))
+            else:
+                isl_default_val = default_val
             aff = isl.Aff.val_on_domain(space, isl_default_val)
             pw_piece = isl.PwAff.from_aff(aff).intersect_domain(remaining)
             
@@ -169,6 +175,11 @@ class Frame:
         if self.is_empty:
             return True
         return self.pw.le_set(other.pw).is_equal(self.domain)
+    
+    def __lt__(self, other: "Frame") -> bool:
+        if self.is_empty:
+            return True
+        return self.pw.lt_set(other.pw).is_equal(self.domain)
 
     def le_slow(self, other: "Frame") -> bool:
         for s in enumerate_states(self.variables):
@@ -251,6 +262,13 @@ class Frame:
             region: isl.Set = make_domain(self.domain.get_ctx(), region)
         aff = isl.Aff.zero_on_domain(region.get_space()).intersect_domain(region)
         zeroed = self.pw.union_min(aff)
+        return Frame(zeroed, self.domain, self.variables, self.factor)
+    
+    def set_region(self, region:  dict[str, tuple[int, int]] | isl.Set, val: isl.Val):
+        if isinstance(region, dict):
+            region: isl.Set = make_domain(self.domain.get_ctx(), region)
+        aff = isl.Aff.val_on_domain(region.get_space(), val).intersect_domain(region)
+        zeroed = self.pw.subtract_domain(region).union_min(aff)
         return Frame(zeroed, self.domain, self.variables, self.factor)
     
     def sum_over_region(self, region: dict[str, tuple[int, int]] | isl.Set):

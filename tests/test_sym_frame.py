@@ -227,6 +227,18 @@ def test_zero_region():
     F_ = F.zero_region({"x": (0,1)})
     assert F_ == G
 
+def test_set_region():
+    ctx = isl.Context()
+    vars = {"x": (0,2)}
+    F = Frame.from_pieces(ctx, vars, [
+        (s(ctx, "{ [x] : x=0}"), Fraction(9,10)),
+        (s(ctx, "{ [x] : x>0}"), Fraction(1))])
+    G = Frame.from_pieces(ctx, vars, [
+        (s(ctx, "{ [x] : x<=1}"), Fraction(1)),
+        (s(ctx, "{ [x] : x=2}"), Fraction(1))])
+    F_ = F.set_region({"x": (0,1)}, 1)
+    assert F_ == G
+
 def test_sum_over_region():
     ctx = isl.Context()
     vars = {"x": (0,2)}
