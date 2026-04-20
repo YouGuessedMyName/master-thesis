@@ -22,6 +22,10 @@ def Cmax(F: Frame, _G: FrameSet, M: Model):
     # However, I suspect that it will be faster in practice to do something even simpler!
     # We could even have a case distinction where it counts the amount of states, and based on that decides what is viable.
     # For the simple line example it even suffices to just account for the one thing.
+    # Even wilder idea: approach the limits in the heuristics as a cure for loops!
+    res = M.Phi(F)
+    res[M.init] = M.max_prob
+    return res
 
 def Citer(F: Frame, G: FrameSet, M: Model):
     """Conflict heuristic based on simply doing value iteration a couple of times."""

@@ -114,21 +114,26 @@ def adjointPDRdown(M: Model, do_propagate: bool, do_generalization: bool, heuris
                     assert zh in Gk
                     assert M.Phi(Frame.meet(F[k-1], zh)) <= zh
             
-            F = [Frame.meet(Fj, z) for (j, Fj) in enumerate(F) if j <= k] + [F[j] for j in range(k+1, n)]
-            
-                
             # GENERALIZATION
             if do_generalization:
+                Fk_minus_1_meet = Frame.meet(F[k-1], z)
+                Fk_meet = Frame.meet(F[k], z)
                 nz = non_zero_states(Gk)
                 for p in iterate_isl_set(nz):
-                    delta = F[k].pw.eval(p)
-                    Fgend = linear_generalization(F[k-1], p, delta, M)
-                    if Fgend < F[k]:
-                        print("Fk", F[k])
-                        print("Fgend", Fgend)
+                    delta = Fk_meet.pw.eval(p)
+                    Fgend = linear_generalization(Fk_minus_1_meet, p, delta, M)
+                    if not (F[k] <= Fgend): # Then something can be shrunk
+                        if print_:
+                            print("Generalizing!")
+                            print("Fk", Fk_meet)
+                            print("Fgend", Fgend)
                         pass
                         F = [Frame.meet(Fj, Fgend) for (j, Fj) in enumerate(F) if j <= k] + [F[j] for j in range(k+1, n)]
-
+                    else:
+                        F = [Frame.meet(Fj, z) for (j, Fj) in enumerate(F) if j <= k] + [F[j] for j in range(k+1, n)]
+            else:
+                F = [Frame.meet(Fj, z) for (j, Fj) in enumerate(F) if j <= k] + [F[j] for j in range(k+1, n)]
+            
             if do_propagate:
                 F_meet_conjuncts = [Fj_conjuncts + [z] for (j, Fj_conjuncts) in enumerate(F_meet_conjuncts) if j <= k] \
                                 + [F_meet_conjuncts[j] for j in range(k+1, n)]
