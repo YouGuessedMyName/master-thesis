@@ -1,10 +1,7 @@
 from sym_adjpdr.frames import *
 from sym_adjpdr.model import *
-
-def vtp(v: isl.Val) -> Fraction:
-    if v.is_int():
-        return Fraction(v.to_python())
-    return Fraction(v.get_num_si(), v.get_den_val().to_python())
+import sympy as spy
+from sym_adjpdr.islpy_to_sympy import *
 
 def iterate_isl_set(S: isl.Set) -> Iterator[isl.Point]:
     while not S.is_empty():
@@ -44,9 +41,6 @@ def linear_generalization(F: Frame, p: isl.Point, delta: isl.Val, M: Model) -> F
         [(isl.Set.from_point(p), delta)], default_val=Fraction(1)) # No need for infty, 1 suffices since the range is [0,1]
 
     for i, (x, (_lb, ub)) in enumerate(M.vars.items()):
-        # TODO temporary!!
-        if x == "g":
-            break
         # TODO we are repeating work here... In the future have the vars on domain available from M and cache!
         sp = M.domain.space
         x_isl = isl.Aff.var_on_domain(sp, isl.dim_type.set, i)
@@ -75,5 +69,45 @@ def linear_generalization(F: Frame, p: isl.Point, delta: isl.Val, M: Model) -> F
         F__ = Frame.from_pieces(M.ctx, M.vars, [(theta, e)], default_val=Fraction(1))
         if M.Phi(F) <= F__:
             F_ = Frame.meet(F_, F__)
+
+    return F_
+
+def polynomial_generalization(F: Frame, p: isl.Point, delta: isl.Val, n: int, M: Model) -> list[Fraction]:
+    # Do polynomial generalization. The resulting list represents the coefficients of each of the polynomial terms.
+    assert M.Phi(F).pw.eval(p) <= delta
+
+    F_ = Frame.from_pieces(M.ctx, M.vars, 
+        [(isl.Set.from_point(p), delta)], default_val=Fraction(1)) # No need for infty, 1 suffices since the range is [0,1]
+
+    for k, (x, (_lb, ub)) in enumerate(M.vars.items()):
+        # TODO we are repeating work here... In the future have the vars on domain available from M and cache!
+        sp = M.domain.space
+        x_spy = spy.Symbol(x)
+        x_isl = isl.Aff.var_on_domain(sp, isl.dim_type.set, k)
+        cur_val = p.get_coordinate_val(isl.dim_type.set, k)
+        theta = M.domain.copy().add_constraints(
+            [isl.Constraint.equality_from_aff(
+                    isl.Aff.var_on_domain(sp, isl.dim_type.set, j) 
+                - 
+                    p.get_coordinate_val(isl.dim_type.set, j))
+                for j in range(len(M.vars)) if j != k
+            ]
+            )
+        theta = theta.add_constraint(isl.Constraint.inequality_from_aff(x_isl - cur_val))
+
+        sigma_subst = p.set_coordinate_val(isl.dim_type.set, k, isl.Val(ub))
+        Phi_F = M.Phi(F)
+        Phi_F_eval = vtp(Phi_F.pw.eval(sigma_subst))
+        points = [(vtp(cur_val), vtp(delta)), (ub, Phi_F_eval)]
+
+        i = 0
+        while True:
+            e = spy.interpolate(points, x_spy)
+            F__ = Frame.from_pieces(M.ctx, M.vars, [(theta, e)], default_val=Fraction(1))
+            if M.Phi(F) <= F__:
+                F_ = Frame.meet(F_, F__)
+            
+            if i > n:
+                break
 
     return F_

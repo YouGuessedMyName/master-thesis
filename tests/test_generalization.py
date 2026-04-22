@@ -19,8 +19,6 @@ def eval_aff_at(aff, x_value: int):
 
 
 def test_interpolate_simple_line():
-    ctx = isl.DEFAULT_CONTEXT
-    space = isl.Space.create_from_names(ctx, set=["x"])
     x = isl.Aff.var_on_domain(space, isl.dim_type.set, 0)
 
     # line through (1, 3) and (4, 9): y = 2x + 1
@@ -29,3 +27,68 @@ def test_interpolate_simple_line():
     assert eval_aff_at(aff, 1) == 3
     assert eval_aff_at(aff, 2) == 5
     assert eval_aff_at(aff, 4) == 9
+
+def test_aff_to_sympy_simple():
+    # Build affine expression: 2*x + 3
+    aff = isl.Aff.zero_on_domain(isl.LocalSpace.from_space(space))
+    aff = aff.set_coefficient_val(isl.dim_type.in_, 0, isl.Val.int_from_si(ctx, 2))
+    aff = aff.set_constant_val(isl.Val.int_from_si(ctx, 3))
+
+    # Convert
+    x = spy.Symbol("x")
+    expr = aff_to_sympy(aff, [x])
+
+    # Expected SymPy expression
+    
+    expected = 2*x + 3
+
+    # Assert structural equality via canonical form
+    assert spy.Poly(expr, x) == spy.Poly(expected, x)
+
+def test_set_to_condition_interval():
+    # Define set: { [x] : 0 <= x <= 10 }
+    s = isl.Set.read_from_str(
+        ctx,
+        "{ [x] : 0 <= x <= 10 }"
+    )
+
+    x = spy.Symbol("x")
+
+    cond = set_to_condition(s, [x])
+
+    # Expected condition
+    expected = spy.And(x >= 0, x <= 10)
+
+    # Structural comparison via simplification
+
+    res = spy.simplify_logic(spy.Equivalent(cond, expected))
+    assert res
+
+def test_frame_to_sympy_simple_piecewise():
+
+    # Build PwAff:
+    # if x >= 0: x + 1
+    # if x < 0:  x - 1
+
+    # Piece 1: x >= 0
+    set_pos = isl.Set.read_from_str(ctx, "{ [x] : x >= 0 }")
+    aff_pos = isl.Aff.read_from_str(ctx, "{ [x] -> [x + 1] }")
+
+    # Piece 2: x < 0
+    set_neg = isl.Set.read_from_str(ctx, "{ [x] : x < 0 }")
+    aff_neg = isl.Aff.read_from_str(ctx, "{ [x] -> [x - 1] }")
+
+    pw = isl.PwAff.read_from_str(ctx,  "{ [x] -> [x + 1] : x >= 0; [x] -> [x - 1] : x < 0 }")
+
+    expr = frame_to_sympy(pw, ["x"])
+
+    x = spy.Symbol("x")
+
+    expected = spy.Piecewise(
+        (x + 1, x >= 0),
+        (x - 1, x < 0)
+    )
+
+    # Compare via logical equivalence, not structural equality
+    for val in [-2, 0, 3]:
+        assert expr.subs(x, val) == expected.subs(x, val)
