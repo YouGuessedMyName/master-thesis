@@ -35,7 +35,7 @@ def test_aff_to_sympy_simple():
     aff = aff.set_constant_val(isl.Val.int_from_si(ctx, 3))
 
     # Convert
-    x = spy.Symbol("x")
+    x = sp.Symbol("x")
     expr = aff_to_sympy(aff, [x])
 
     # Expected SymPy expression
@@ -43,7 +43,7 @@ def test_aff_to_sympy_simple():
     expected = 2*x + 3
 
     # Assert structural equality via canonical form
-    assert spy.Poly(expr, x) == spy.Poly(expected, x)
+    assert sp.Poly(expr, x) == sp.Poly(expected, x)
 
 def test_set_to_condition_interval():
     # Define set: { [x] : 0 <= x <= 10 }
@@ -52,16 +52,16 @@ def test_set_to_condition_interval():
         "{ [x] : 0 <= x <= 10 }"
     )
 
-    x = spy.Symbol("x")
+    x = sp.Symbol("x")
 
     cond = set_to_condition(s, [x])
 
     # Expected condition
-    expected = spy.And(x >= 0, x <= 10)
+    expected = sp.And(x >= 0, x <= 10)
 
     # Structural comparison via simplification
 
-    res = spy.simplify_logic(spy.Equivalent(cond, expected))
+    res = sp.simplify_logic(sp.Equivalent(cond, expected))
     assert res
 
 def test_frame_to_sympy_simple_piecewise():
@@ -82,9 +82,9 @@ def test_frame_to_sympy_simple_piecewise():
 
     expr = frame_to_sympy(pw, ["x"])
 
-    x = spy.Symbol("x")
+    x = sp.Symbol("x")
 
-    expected = spy.Piecewise(
+    expected = sp.Piecewise(
         (x + 1, x >= 0),
         (x - 1, x < 0)
     )

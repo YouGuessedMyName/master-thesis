@@ -1,7 +1,7 @@
 from typing import Iterable
 
 import islpy as isl
-import sympy as spy
+import sympy as sp
 from fractions import Fraction
 
 def vtp(v: isl.Val) -> Fraction:
@@ -9,26 +9,26 @@ def vtp(v: isl.Val) -> Fraction:
         return Fraction(v.to_python())
     return Fraction(v.get_num_si(), v.get_den_val().to_python())
 
-def aff_to_sympy(aff: isl.Aff, sym_vars: Iterable[spy.Symbol]) -> spy.Expr:
+def aff_to_sympy(aff: isl.Aff, sym_vars: Iterable[sp.Symbol]) -> sp.Expr:
     expr = 0
 
     for i, v in enumerate(sym_vars):
         coeff = aff.get_coefficient_val(isl.dim_type.in_, i)
-        expr += spy.Integer(vtp(coeff)) * v
+        expr += sp.Integer(vtp(coeff)) * v
 
     const = aff.get_constant_val().to_python()
-    expr += spy.Integer(const)
+    expr += sp.Integer(const)
 
     return expr
 
-def set_to_condition(s: isl.Set, vars: Iterable[spy.Symbol]) -> spy.Expr:
+def set_to_condition(s: isl.Set, sym_vars: Iterable[sp.Symbol]) -> sp.Expr:
     conds = []
     for bset in s.get_basic_sets():
         for c in bset.get_constraints():
             aff = c.get_aff()
             
             lhs = 0
-            for i, v in enumerate(vars):
+            for i, v in enumerate(sym_vars):
                 coeff = aff.get_coefficient_val(isl.dim_type.in_, i)
                 lhs += vtp(coeff) * v
             
@@ -39,10 +39,10 @@ def set_to_condition(s: isl.Set, vars: Iterable[spy.Symbol]) -> spy.Expr:
             else:
                 conds.append(lhs >= 0)
     
-    return spy.And(*conds)
+    return sp.And(*conds)
 
 def frame_to_sympy(pw: isl.PwAff, vars: Iterable[str]):
-    sym_vars = [spy.Symbol(v) for v in vars]
+    sym_vars = [sp.Symbol(v) for v in vars]
     pieces = []
 
     for sset, aff in pw.get_pieces():
@@ -50,4 +50,4 @@ def frame_to_sympy(pw: isl.PwAff, vars: Iterable[str]):
         cond = set_to_condition(sset, sym_vars)
         pieces.append((expr, cond))
 
-    return spy.Piecewise(*pieces)
+    return sp.Piecewise(*pieces)

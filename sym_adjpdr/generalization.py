@@ -1,7 +1,8 @@
 from sym_adjpdr.frames import *
 from sym_adjpdr.model import *
-import sympy as spy
+import sympy as sp
 from sym_adjpdr.islpy_to_sympy import *
+from sym_adjpdr.sympy_to_z3 import *
 
 def iterate_isl_set(S: isl.Set) -> Iterator[isl.Point]:
     while not S.is_empty():
@@ -72,28 +73,39 @@ def linear_generalization(F: Frame, p: isl.Point, delta: isl.Val, M: Model) -> F
 
     return F_
 
-def polynomial_generalization(F: Frame, p: isl.Point, delta: isl.Val, n: int, M: Model) -> list[Fraction]:
-    # Do polynomial generalization. The resulting list represents the coefficients of each of the polynomial terms.
+def isl_point_to_sym_state(p: isl.Point, sym_vars: list[sp.Symbol]) -> dict[sp.Symbol, Fraction]:
+    return {x : vtp(p.get_coordinate_val(i)) for i, x in enumerate(sym_vars)}
+
+def polynomial_generalization(F: Frame, p: isl.Point, delta: isl.Val, n: int, M: Model) -> sp.Piecewise:
+    # Do polynomial generalization. Outputs a simpy piecewise.
     assert M.Phi(F).pw.eval(p) <= delta
 
-    F_ = Frame.from_pieces(M.ctx, M.vars, 
+    PHI_F_SP = frame_to_sympy(M.Phi(F))
+    PHI_F_Z3 = sympy_to_z3(PHI_F_SP)
+
+    F1 = Frame.from_pieces(M.ctx, M.vars, 
         [(isl.Set.from_point(p), delta)], default_val=Fraction(1)) # No need for infty, 1 suffices since the range is [0,1]
+    
+    sym_vars = [sp.symbol(x) for x in M.vars]
+    z3_vars = [z3.Real(x) for x in M.vars]
+    F1_sp = aff_to_sympy(F1.pw, sym_vars)
 
     for k, (x, (_lb, ub)) in enumerate(M.vars.items()):
         # TODO we are repeating work here... In the future have the vars on domain available from M and cache!
-        sp = M.domain.space
-        x_spy = spy.Symbol(x)
-        x_isl = isl.Aff.var_on_domain(sp, isl.dim_type.set, k)
+        space = M.domain.space
+        x_spy = sp.Symbol(x)
+        x_isl = isl.Aff.var_on_domain(space, isl.dim_type.set, k)
         cur_val = p.get_coordinate_val(isl.dim_type.set, k)
-        theta = M.domain.copy().add_constraints(
+        theta: isl.Set = M.domain.copy().add_constraints(
             [isl.Constraint.equality_from_aff(
-                    isl.Aff.var_on_domain(sp, isl.dim_type.set, j) 
+                    isl.Aff.var_on_domain(space, isl.dim_type.set, j) 
                 - 
                     p.get_coordinate_val(isl.dim_type.set, j))
                 for j in range(len(M.vars)) if j != k
             ]
             )
         theta = theta.add_constraint(isl.Constraint.inequality_from_aff(x_isl - cur_val))
+        theta_sp = set_to_condition(theta, sym_vars)
 
         sigma_subst = p.set_coordinate_val(isl.dim_type.set, k, isl.Val(ub))
         Phi_F = M.Phi(F)
@@ -102,12 +114,24 @@ def polynomial_generalization(F: Frame, p: isl.Point, delta: isl.Val, n: int, M:
 
         i = 0
         while True:
-            e = spy.interpolate(points, x_spy)
-            F__ = Frame.from_pieces(M.ctx, M.vars, [(theta, e)], default_val=Fraction(1))
-            if M.Phi(F) <= F__:
-                F_ = Frame.meet(F_, F__)
+            e = sp.interpolate(points, x_spy)
+            # TODO try to use ISL instead! Saves a bunch of pain probably.
+            F2_sp = sp.Piecewise((e, theta_sp), (1, True))
+            F2_z3 = sympy_to_z3(F2_sp)
             
-            if i > n:
+            if not check_in_bounds(F2_z3, z3_vars, 0, 1): # Not a Frame
+                break
+            sigma2 = find_greater(PHI_F_Z3, F2_z3)
+            sigma2_spy = {var: val for var, val in zip(sym_vars, sigma2.values())}
+            if sigma2 is not None: # Counterexample
+                points.append((sigma2[x], PHI_F_SP.subs(sigma2_spy)))
+            else: # We can generalize!
+                F1_sp = sp.Min(F1_sp, F2_sp)
+            
+            if i > n: # The do-while loop
                 break
 
-    return F_
+    return F1_sp
+
+def sympy_piecewise_to_pw_aff_approximation():
+    pass
