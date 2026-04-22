@@ -121,7 +121,10 @@ def adjointPDRdown(M: Model, do_propagate: bool, do_generalization: bool, heuris
                 nz = non_zero_states(Gk)
                 for p in iterate_isl_set(nz):
                     delta = Fk_meet.pw.eval(p)
-                    Fgend = linear_generalization(Fk_minus_1_meet, p, delta, M)
+                    Fgend = polynomial_generalization(Fk_minus_1_meet, p, delta, 5, M)
+                    
+                    temp = isl.PwQPolynomial.from_pw_aff(Fgend.pw)
+
                     if not (F[k] <= Fgend): # Then something can be shrunk
                         if print_:
                             print("Generalizing!")

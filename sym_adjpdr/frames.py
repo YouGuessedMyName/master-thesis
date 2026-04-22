@@ -119,7 +119,7 @@ class Frame:
             else:
                 aff = val
 
-            pw_piece = isl.PwAff.from_aff(aff).intersect_domain(clean)
+            pw_piece = aff.intersect_domain(clean)
             pw = pw_piece if pw is None else pw.union_max(pw_piece)
 
         # fill remaining domain with 0

@@ -2,6 +2,7 @@ from sym_adjpdr.frames import *
 from sym_adjpdr.model import *
 import sympy as sp
 from sym_adjpdr.islpy_to_sympy import *
+from sym_adjpdr.sympy_to_islpy import *
 from sym_adjpdr.sympy_to_z3 import *
 
 def iterate_isl_set(S: isl.Set) -> Iterator[isl.Point]:
@@ -76,24 +77,22 @@ def linear_generalization(F: Frame, p: isl.Point, delta: isl.Val, M: Model) -> F
 def isl_point_to_sym_state(p: isl.Point, sym_vars: list[sp.Symbol]) -> dict[sp.Symbol, Fraction]:
     return {x : vtp(p.get_coordinate_val(i)) for i, x in enumerate(sym_vars)}
 
-def polynomial_generalization(F: Frame, p: isl.Point, delta: isl.Val, n: int, M: Model) -> sp.Piecewise:
+def polynomial_generalization(F: Frame, p: isl.Point, delta: isl.Val, n: int, M: Model) -> isl.PwQPolynomial:
     # Do polynomial generalization. Outputs a simpy piecewise.
     assert M.Phi(F).pw.eval(p) <= delta
-
-    PHI_F_SP = frame_to_sympy(M.Phi(F))
-    PHI_F_Z3 = sympy_to_z3(PHI_F_SP)
 
     F1 = Frame.from_pieces(M.ctx, M.vars, 
         [(isl.Set.from_point(p), delta)], default_val=Fraction(1)) # No need for infty, 1 suffices since the range is [0,1]
     
-    sym_vars = [sp.symbol(x) for x in M.vars]
-    z3_vars = [z3.Real(x) for x in M.vars]
-    F1_sp = aff_to_sympy(F1.pw, sym_vars)
+    F1_poly = isl.PwQPolynomial.from_pw_aff(F1.pw)
+
+    sym_vars = [sp.Symbol(x) for x in M.vars]
+    F1_sp = frame_to_sympy(F1.pw, sym_vars)
 
     for k, (x, (_lb, ub)) in enumerate(M.vars.items()):
         # TODO we are repeating work here... In the future have the vars on domain available from M and cache!
         space = M.domain.space
-        x_spy = sp.Symbol(x)
+        x_sp = sp.Symbol(x)
         x_isl = isl.Aff.var_on_domain(space, isl.dim_type.set, k)
         cur_val = p.get_coordinate_val(isl.dim_type.set, k)
         theta: isl.Set = M.domain.copy().add_constraints(
@@ -114,13 +113,17 @@ def polynomial_generalization(F: Frame, p: isl.Point, delta: isl.Val, n: int, M:
 
         i = 0
         while True:
-            e = sp.interpolate(points, x_spy)
-            # TODO try to use ISL instead! Saves a bunch of pain probably.
-            F2_sp = sp.Piecewise((e, theta_sp), (1, True))
-            F2_z3 = sympy_to_z3(F2_sp)
+            e_sp = sp.interpolate(points, x_sp)
+            e = sympy_poly_to_isl_pwqp_multi(e_sp, sym_vars)
+            pw_not_theta_one = isl.PwQPolynomial.from_pw_aff(to_indicator_function(theta.complement(), M.domain))
+            F2_poly = e.intersect_domain(theta).add(pw_not_theta_one).coalesce()
             
-            if not check_in_bounds(F2_z3, z3_vars, 0, 1): # Not a Frame
+            if F2_poly.min() < 0 or F2_poly.max() > 1: # Not a Frame
                 break
+
+            diff = F1_poly - F2_poly
+            x = diff.is_zero
+
             sigma2 = find_greater(PHI_F_Z3, F2_z3)
             sigma2_spy = {var: val for var, val in zip(sym_vars, sigma2.values())}
             if sigma2 is not None: # Counterexample
