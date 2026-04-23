@@ -80,10 +80,11 @@ def test_frame_to_sympy_simple_piecewise():
 
     pw = isl.PwAff.read_from_str(ctx,  "{ [x] -> [x + 1] : x >= 0; [x] -> [x - 1] : x < 0 }")
 
-    expr = frame_to_sympy(pw, ["x"])
-
     x = sp.Symbol("x")
 
+    expr = frame_to_sympy(pw, [x])
+
+    
     expected = sp.Piecewise(
         (x + 1, x >= 0),
         (x - 1, x < 0)

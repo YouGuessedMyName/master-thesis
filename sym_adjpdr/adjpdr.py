@@ -121,7 +121,7 @@ def adjointPDRdown(M: Model, do_propagate: bool, do_generalization: bool, heuris
                 nz = non_zero_states(Gk)
                 for p in iterate_isl_set(nz):
                     delta = Fk_meet.pw.eval(p)
-                    Fgend = polynomial_generalization(Fk_minus_1_meet, p, delta, 5, M)
+                    Fgend = hybrid_polynomial_generalization(Fk_minus_1_meet, p, delta, M)
                     
                     temp = isl.PwQPolynomial.from_pw_aff(Fgend.pw)
 

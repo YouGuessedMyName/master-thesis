@@ -1,46 +1,87 @@
-from sympy import Symbol, Add, Mul, Pow, Integer, Rational, Piecewise
+import sympy as sp
 from z3 import Real, Int, If, Solver, sat
 from fractions import Fraction
 import z3
 
-def sympy_to_z3(expr: Piecewise, var_map: dict[Symbol, z3.ExprRef]):
+def sympy_to_z3(expr: sp.Expr, var_map: dict[sp.Symbol, z3.ExprRef]):
     """
-    Convert a SymPy expression into a Z3 expression.
-    
+    Convert a SymPy expression (including Piecewise) into a Z3 expression.
+
     var_map: dict mapping SymPy symbols → Z3 variables
     """
 
-    # Variables
-    if isinstance(expr, Symbol):
-        return var_map[expr]
+    def convert(e):
+        # --- Symbols ---
+        if isinstance(e, sp.Symbol):
+            return var_map[e]
 
-    # Constants
-    if isinstance(expr, (int, Integer)):
-        return expr
+        # --- Numbers ---
+        if isinstance(e, sp.Integer):
+            return z3.IntVal(int(e))
+        if isinstance(e, sp.Rational):
+            return z3.RealVal(e.p) / z3.RealVal(e.q)
+        if isinstance(e, sp.Float):
+            return z3.RealVal(float(e))
 
-    if isinstance(expr, Rational):
-        return expr.p / expr.q
+        # --- Arithmetic ---
+        if isinstance(e, sp.Add):
+            return sum(convert(arg) for arg in e.args)
 
-    # Addition
-    if isinstance(expr, Add):
-        return sum(sympy_to_z3(arg, var_map) for arg in expr.args)
+        if isinstance(e, sp.Mul):
+            result = convert(e.args[0])
+            for arg in e.args[1:]:
+                result = result * convert(arg)
+            return result
 
-    # Multiplication
-    if isinstance(expr, Mul):
-        result = sympy_to_z3(expr.args[0], var_map)
-        for arg in expr.args[1:]:
-            result *= sympy_to_z3(arg, var_map)
-        return result
+        if isinstance(e, sp.Pow):
+            base, exp = e.args
+            return convert(base) ** convert(exp)
 
-    # Power
-    if isinstance(expr, Pow):
-        base = sympy_to_z3(expr.args[0], var_map)
-        exp = expr.args[1]
-        if exp.is_Integer:
-            return base ** int(exp)
-        raise NotImplementedError("Non-integer powers not supported in Z3 translation")
+        # --- Comparisons ---
+        if isinstance(e, sp.Rel):
+            lhs = convert(e.lhs)
+            rhs = convert(e.rhs)
 
-    raise NotImplementedError(f"Unsupported expression: {expr}")
+            if isinstance(e, sp.Le):
+                return lhs <= rhs
+            if isinstance(e, sp.Lt):
+                return lhs < rhs
+            if isinstance(e, sp.Ge):
+                return lhs >= rhs
+            if isinstance(e, sp.Gt):
+                return lhs > rhs
+            if isinstance(e, sp.Eq):
+                return lhs == rhs
+
+        # --- Boolean logic ---
+        if isinstance(e, sp.And):
+            return z3.And(*[convert(arg) for arg in e.args])
+        if isinstance(e, sp.Or):
+            return z3.Or(*[convert(arg) for arg in e.args])
+        if isinstance(e, sp.Not):
+            return z3.Not(convert(e.args[0]))
+
+        # --- Piecewise ---
+        if isinstance(e, sp.Piecewise):
+            result = None
+            for value, cond in reversed(e.args):
+                z3_val = convert(value)
+                z3_cond = convert(cond)
+
+                if result is None:
+                    # last branch
+                    result = z3_val
+                else:
+                    result = z3.If(z3_cond, z3_val, result)
+
+            return result
+
+        if e == True or e == False:
+            return e
+
+        raise NotImplementedError(f"Unsupported expression: {type(e)} -> {e}")
+
+    return convert(expr)
 
 def check_in_bounds(
     e: z3.ExprRef,
@@ -69,7 +110,7 @@ def find_greater(
     e1: z3.ExprRef,
     e2: z3.ExprRef,
     z3_vars: dict[str, z3.ExprRef]
-) -> None | dict[str, Fraction]:
+) -> None | dict[str, int]:
     """
     Return an assignment where e1 > e2, otherwise None.
     """

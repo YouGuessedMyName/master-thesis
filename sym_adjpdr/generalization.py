@@ -1,9 +1,12 @@
 from sym_adjpdr.frames import *
+from sym_adjpdr.islpy_utils import find_partitions_list, pwqp_to_pwaff_overapproximation
 from sym_adjpdr.model import *
 import sympy as sp
 from sym_adjpdr.islpy_to_sympy import *
 from sym_adjpdr.sympy_to_islpy import *
 from sym_adjpdr.sympy_to_z3 import *
+
+PARTITIONS = None
 
 def iterate_isl_set(S: isl.Set) -> Iterator[isl.Point]:
     while not S.is_empty():
@@ -77,16 +80,31 @@ def linear_generalization(F: Frame, p: isl.Point, delta: isl.Val, M: Model) -> F
 def isl_point_to_sym_state(p: isl.Point, sym_vars: list[sp.Symbol]) -> dict[sp.Symbol, Fraction]:
     return {x : vtp(p.get_coordinate_val(i)) for i, x in enumerate(sym_vars)}
 
-def polynomial_generalization(F: Frame, p: isl.Point, delta: isl.Val, n: int, M: Model) -> isl.PwQPolynomial:
+N = 5 # How many counterexamples to try during polynomial generalization.
+
+def hybrid_polynomial_generalization(F: Frame, p: isl.Point, delta: isl.Val, M: Model) -> Frame:
+    global PARTITIONS
+    if PARTITIONS is None:
+        PARTITIONS = find_partitions_list(M.vars)
     # Do polynomial generalization. Outputs a simpy piecewise.
     assert M.Phi(F).pw.eval(p) <= delta
 
+    sym_vars = [sp.Symbol(x) for x in M.vars]
+    z3_vars = [z3.Int(x) for x in M.vars]
+    sympy_to_z3_var_map = dict(zip(sym_vars, z3_vars))
+    str_to_z3_var_map = dict(zip(M.vars, z3_vars))
+
     F1 = Frame.from_pieces(M.ctx, M.vars, 
         [(isl.Set.from_point(p), delta)], default_val=Fraction(1)) # No need for infty, 1 suffices since the range is [0,1]
+    F1_aff = F1.pw
+    
+    Phi_F = M.Phi(F)
+    Phi_F_sp = frame_to_sympy(Phi_F.pw, sym_vars)
+    Phi_F_z3 = sympy_to_z3(Phi_F_sp, sympy_to_z3_var_map)
     
     F1_poly = isl.PwQPolynomial.from_pw_aff(F1.pw)
 
-    sym_vars = [sp.Symbol(x) for x in M.vars]
+    
     F1_sp = frame_to_sympy(F1.pw, sym_vars)
 
     for k, (x, (_lb, ub)) in enumerate(M.vars.items()):
@@ -107,7 +125,7 @@ def polynomial_generalization(F: Frame, p: isl.Point, delta: isl.Val, n: int, M:
         theta_sp = set_to_condition(theta, sym_vars)
 
         sigma_subst = p.set_coordinate_val(isl.dim_type.set, k, isl.Val(ub))
-        Phi_F = M.Phi(F)
+        
         Phi_F_eval = vtp(Phi_F.pw.eval(sigma_subst))
         points = [(vtp(cur_val), vtp(delta)), (ub, Phi_F_eval)]
 
@@ -117,24 +135,29 @@ def polynomial_generalization(F: Frame, p: isl.Point, delta: isl.Val, n: int, M:
             e = sympy_poly_to_isl_pwqp_multi(e_sp, sym_vars)
             pw_not_theta_one = isl.PwQPolynomial.from_pw_aff(to_indicator_function(theta.complement(), M.domain))
             F2_poly = e.intersect_domain(theta).add(pw_not_theta_one).coalesce()
+            F2_aff = pwqp_to_pwaff_overapproximation(F2_poly, PARTITIONS, k)
+            F2_sp = sp.Piecewise(
+                (e_sp, theta_sp),
+                (1, True)
+            )
+            F2_z3 = sympy_to_z3(F2_sp, sympy_to_z3_var_map)
             
             if F2_poly.min() < 0 or F2_poly.max() > 1: # Not a Frame
                 break
 
-            diff = F1_poly - F2_poly
-            x = diff.is_zero
-
-            sigma2 = find_greater(PHI_F_Z3, F2_z3)
-            sigma2_spy = {var: val for var, val in zip(sym_vars, sigma2.values())}
+            sigma2 = find_greater(Phi_F_z3, F2_z3, str_to_z3_var_map)
             if sigma2 is not None: # Counterexample
-                points.append((sigma2[x], PHI_F_SP.subs(sigma2_spy)))
+                sigma2_sp = dict(zip(sym_vars, sigma2.values()))
+                #sigma2_sp_floats = {k: sp.Rational(v) for k,v in sigma2_sp.items()}
+                upper = Phi_F_sp.subs(sigma2_sp)
+                points.append((sigma2[x], upper))
             else: # We can generalize!
-                F1_sp = sp.Min(F1_sp, F2_sp)
-            
-            if i > n: # The do-while loop
+                F1_aff = F1_aff.union_min(F2_aff)
                 break
-
-    return F1_sp
+            
+            if i > N: # The do-while loop
+                break
+    return Frame(F1_aff, F.domain, F.variables)
 
 def sympy_piecewise_to_pw_aff_approximation():
     pass

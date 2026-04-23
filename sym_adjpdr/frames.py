@@ -7,9 +7,7 @@ import islpy as isl
 from itertools import product
 from sym_adjpdr.barvinok_bindings import *
 import re
-
-# LP solver
-from scipy.optimize import linprog
+from sym_adjpdr.islpy_to_sympy import vtp
 
 type State = dict[str, int]
 type Vars = dict[str, tuple[int, int]] # Represents a variable with a name and a domain.
@@ -242,7 +240,11 @@ class Frame:
         return Frame(self.pw - other.pw, self.domain, self.variables, self.factor)
     
     def sum(self):
-        return barvinok_sum_pwqp(isl.PwQPolynomial.from_pw_aff(self.pw).intersect_domain(self.domain))
+        pwq = isl.PwQPolynomial.from_pw_aff(self.pw).intersect_domain(self.domain)
+        #res = barvinok_sum_pwqp(pwq)
+        res2 = vtp(pwq.sum().as_qpolynomial().as_aff().get_constant_val())
+        #assert res == res2
+        return res2
     
     def __setitem__(self, key: dict[str, int], value: Fraction):        
         set_str = "{ [" + ",".join(key) + "] : "  + " and ".join(f"{k}={v}" for k,v in key.items()) + " }"
@@ -275,7 +277,10 @@ class Frame:
         if isinstance(region, dict):
             region: isl.Set = make_domain(self.domain.get_ctx(), region)
         regionalized = isl.PwQPolynomial.from_pw_aff(self.pw.intersect_domain(region))
-        return barvinok_sum_pwqp(regionalized)
+        #res = barvinok_sum_pwqp(regionalized)
+        res2 = vtp(regionalized.sum().as_qpolynomial().as_aff().get_constant_val())
+        #assert res == res2
+        return res2
     
     def __mul__(self, other):
         return Frame(self.pw * other.pw, self.domain, self.variables)
