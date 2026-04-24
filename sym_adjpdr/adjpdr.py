@@ -51,6 +51,10 @@ def adjointPDRdown(M: Model, do_propagate: bool, do_generalization: bool, heuris
             #print(f"\t comparing: {F[j]} and {F[j+1]}")
             if not F[j].is_empty and F[j] == F[j+1]:
                 if assert_:
+                    x = M.Phi(F[j])
+                    print(F[j])
+                    print()
+                    print(x)
                     assert M.Phi(F[j]) <= F[j] if assert_ else None
                 print(f"After {iteration-1} iterations")
                 print("Inducitive invariant:", F[j]) if print_ else None

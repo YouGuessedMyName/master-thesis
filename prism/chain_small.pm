@@ -1,6 +1,6 @@
 dtmc
 
-const int N = 10;
+const int N = 50;
 
 module grid
 

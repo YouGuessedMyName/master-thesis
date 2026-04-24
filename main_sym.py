@@ -6,7 +6,7 @@ from sym_adjpdr.heuristics import *
 MAX_PROB = Fraction(90,100)
 
 ctx = isl.Context()
-M = Model.from_prism_file(ctx, "prism/chain_small_lin_gen.pm", MAX_PROB, True)
+M = Model.from_prism_file(ctx, "prism/chain_small.pm", MAX_PROB, True)
 print("prop", M.prop)
 
 heurs = [Cs, Cs1, Cmax]
