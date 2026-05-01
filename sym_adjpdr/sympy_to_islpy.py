@@ -44,6 +44,8 @@ def sympy_poly_to_isl_pwqp_multi(poly_expr, sym_vars, isl_ctx=None):
         terms.append("".join(term_parts))
 
     isl_expr_str = " + ".join(terms)
+    if isl_expr_str == "":
+        isl_expr_str = str(poly_expr)
 
     # Build PwQPolynomial over full domain
     vars_str = ",".join(str(v) for v in sym_vars)

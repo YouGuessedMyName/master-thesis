@@ -212,7 +212,7 @@ class Frame:
         # piecewise product
         prod = f.pw * g.pw
         prod = isl.PwQPolynomial.from_pw_aff(prod.intersect_domain(f.domain))
-        return barvinok_sum_pwqp(prod)
+        return prod.sum()
 
     # ---------- slow dot ----------
     @staticmethod

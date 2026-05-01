@@ -73,6 +73,7 @@ def hybrid_polynomial_generalization(F: Frame, p: isl.Point, delta: isl.Val, M: 
     global PARTITIONS
     if PARTITIONS is None:
         PARTITIONS = find_partitions_list(M.vars)
+        [print(p) for p in PARTITIONS]
     # Do polynomial generalization. Outputs a simpy piecewise.
     assert M.Phi(F).pw.eval(p) <= delta
 
@@ -87,6 +88,7 @@ def hybrid_polynomial_generalization(F: Frame, p: isl.Point, delta: isl.Val, M: 
     
     Phi_F = M.Phi(F)
     Phi_F_sp = frame_to_sympy(Phi_F.pw, sym_vars)
+    assert not Phi_F_sp.has(sp.nan)
     Phi_F_z3 = sympy_to_z3(Phi_F_sp, sympy_to_z3_var_map)
     
     F1_poly = isl.PwQPolynomial.from_pw_aff(F1.pw)
@@ -119,6 +121,8 @@ def hybrid_polynomial_generalization(F: Frame, p: isl.Point, delta: isl.Val, M: 
         i = 0
         while True:
             e_sp = sp.interpolate(points, x_sp)
+            if e_sp.has(sp.zoo):
+                break
             #e_sp = e_sp.subs(list(e_sp.free_symbols), sym_vars)
             e = sympy_poly_to_isl_pwqp_multi(e_sp, sym_vars)
             pw_not_theta_one = isl.PwQPolynomial.from_pw_aff(to_indicator_function(theta.complement(), M.domain))
@@ -138,7 +142,8 @@ def hybrid_polynomial_generalization(F: Frame, p: isl.Point, delta: isl.Val, M: 
                 sigma2_sp = dict(zip(sym_vars, sigma2.values()))
                 #sigma2_sp_floats = {k: sp.Rational(v) for k,v in sigma2_sp.items()}
                 upper = Phi_F_sp.subs(sigma2_sp)
-                points.append((sigma2[x], upper))
+                if upper != sp.nan:
+                    points.append((sigma2[x], upper))
             else: # We can generalize!
                 F1_aff = F1_aff.union_min(F2_aff)
                 break

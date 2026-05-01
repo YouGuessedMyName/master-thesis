@@ -18,7 +18,7 @@ def interpolate(x1: int, y1: int, x2: int, y2: int, var: isl.Aff, space: isl.Spa
     e = a_aff * var + val_to_aff(isl.Val(frac_to_isl(b)), space)
     return e
 
-def find_partitions_list(vars: Vars, maximum_amount: int = 1000) -> list[tuple[tuple[int], isl.BasicSet]]:
+def find_partitions_list(vars: Vars, maximum_amount: int = 10**4) -> list[tuple[tuple[int], isl.BasicSet]]:
     """
     Partition a hyper-rectangle into ≤ maximum_amount equal smaller cubes.
 

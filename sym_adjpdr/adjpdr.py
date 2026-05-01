@@ -49,15 +49,16 @@ def adjointPDRdown(M: Model, do_propagate: bool, do_generalization: bool, heuris
             #print(f"Fj {F[j]}, Fj+1 {F[j+1]}")
             #if len(F[j]) >= 1 and all([isclose(x, y, rel_tol=1e-4) for x, y in zip(F[j], F[j+1])]):
             #print(f"\t comparing: {F[j]} and {F[j+1]}")
-            if not F[j].is_empty and F[j] == F[j+1]:
+            if not F[j].is_empty and F[j+1] <= F[j]:
                 if assert_:
                     x = M.Phi(F[j])
-                    print(F[j])
-                    print()
-                    print(x)
+                    # print(F[j])
+                    # print()
+                    # print(x)
                     assert M.Phi(F[j]) <= F[j] if assert_ else None
-                print(f"After {iteration-1} iterations")
-                print("Inducitive invariant:", F[j]) if print_ else None
+                if print_:
+                    print(f"After {iteration-1} iterations")
+                    print("Inducitive invariant:", F[j]) if print_ else None
                 return True, states_so_far, heuristics_so_far
         # NEGATIVELY CONCLUSIVE
         if len(G) != 0 and G[0].is_empty():
@@ -130,11 +131,10 @@ def adjointPDRdown(M: Model, do_propagate: bool, do_generalization: bool, heuris
                     temp = isl.PwQPolynomial.from_pw_aff(Fgend.pw)
 
                     if not (F[k] <= Fgend): # Then something can be shrunk
-                        if print_:
+                        if True:
                             print("Generalizing!")
                             print("Fk", Fk_meet)
                             print("Fgend", Fgend)
-                        pass
                         F = [Frame.meet(Fj, Fgend) for (j, Fj) in enumerate(F) if j <= k] + [F[j] for j in range(k+1, n)]
                     else:
                         F = [Frame.meet(Fj, z) for (j, Fj) in enumerate(F) if j <= k] + [F[j] for j in range(k+1, n)]
@@ -150,6 +150,7 @@ def testAdjointPDRdown(M: Model, heuristics, used_heuristic, propagate_= False, 
     if not used_heuristic in heuristics:
         heuristics.append(used_heuristic)
     print("Start")
+    print(M.module.expected_result)
     res, states_list, heuristics_list = adjointPDRdown(M, propagate_, generalization_, heuristics, used_heuristic, print_, assert_, loop_check)
     assert res is not None
     
