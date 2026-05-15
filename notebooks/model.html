@@ -43499,7 +43499,7 @@ SVGCanvasElement.prototype.setAttribute = function(prop, val) {
 // exports.Element = SVGCanvasElement;
 </script>
     <style type="text/css">
-      #WCSvPKvnXQ {
+      #IPpTjrjUHm {
         width: 800px;
         height: 600px;
         border: 1px solid lightgray;
@@ -43507,7 +43507,7 @@ SVGCanvasElement.prototype.setAttribute = function(prop, val) {
     </style>
   </head>
   <body>
-    <div id="WCSvPKvnXQ"></div>
+    <div id="IPpTjrjUHm"></div>
     <script type="text/javascript">
         //js
 class NetworkWrapper {
@@ -43625,27 +43625,23 @@ init`, group: "states" },
 `, group: "states" },
 { id: 3, label: `3
 bad`, group: "bad" },
-{ id: 4, label: `4
-`, group: "states" },
-{ id: 5, label: `5
-`, group: "states" },
-{ id: 6, label: `6
-bad`, group: "bad" },
-{ id: 7, label: `7
-`, group: "states" },
+{ id: 10000000000, label: `a`, group: "actions" },
+{ id: 10000000001, label: `b`, group: "actions" },
+{ id: 10000000002, label: `a`, group: "actions" },
+{ id: 10000000003, label: `a`, group: "actions" },
+{ id: 10000000004, label: `a`, group: "actions" },
 ]);
-    var edges_local = new vis.DataSet([{ from: 0, to: 1, label: "1/2" },
-{ from: 0, to: 2, label: "1/2" },
-{ from: 1, to: 3, label: "1/2" },
-{ from: 1, to: 4, label: "1/2" },
-{ from: 2, to: 4, label: "1/2" },
-{ from: 2, to: 5, label: "1/2" },
-{ from: 3, to: 3, label: "1" },
-{ from: 4, to: 6, label: "1/2" },
-{ from: 4, to: 7, label: "1/2" },
-{ from: 5, to: 5, label: "1" },
-{ from: 6, to: 6, label: "1" },
-{ from: 7, to: 7, label: "1" },
+    var edges_local = new vis.DataSet([{ from: 0, to: 10000000000 },
+{ from: 0, to: 10000000001 },
+{ from: 1, to: 10000000002 },
+{ from: 2, to: 10000000003 },
+{ from: 3, to: 10000000004 },
+{ from: 10000000000, to: 1, label: "1" },
+{ from: 10000000001, to: 0, label: "1/2" },
+{ from: 10000000001, to: 2, label: "1/2" },
+{ from: 10000000002, to: 3, label: "1" },
+{ from: 10000000003, to: 3, label: "1" },
+{ from: 10000000004, to: 3, label: "1" },
 ]);
     var options_local = {
   "__fake_macros": {
@@ -43821,8 +43817,8 @@ bad`, group: "bad" },
   "physics": true,
   "autoResize": true
 };
-    var container_local = document.getElementById("WCSvPKvnXQ");
-    var nw_WCSvPKvnXQ = new NetworkWrapper(nodes_local, edges_local, options_local, container_local)
+    var container_local = document.getElementById("IPpTjrjUHm");
+    var nw_IPpTjrjUHm = new NetworkWrapper(nodes_local, edges_local, options_local, container_local)
     
     </script>
   </body>

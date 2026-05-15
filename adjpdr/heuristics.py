@@ -13,6 +13,9 @@ def De(F:V, Gk:LowerSet, M: MDP, print_policy: bool = False) -> LowerSet:
             print("\tPolicy used to compute ZZ: ", [a.label for a in policy])
         except:
             print("\tPolicy used to compute ZZ: ", policy)
+            print("\tPOLICY OVERVIEW:")
+            for policy in M.possible_policies():
+                print(f"{[a.label for a in policy]} => {M.PhiPolicy(policy, F)}")
     return M.PsiPolicy(policy, Gk)
 
 def Cs(F: V, _:LowerSet, M: MDP) -> V:
