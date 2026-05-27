@@ -157,10 +157,12 @@ class Model:
                 update_strs = []
                 domain_restrictions = isl.Set("{ [" + ",".join(self.vars) + "] }") # To prevent errors when reversing the map!
                 for var, update in zip(self.vars, updates):
-                    update_strs.append(expr_to_isl_string(update.new_val))
                     if type(update.new_val) == Const:
                         domain_restriction_str = "{ [" + ",".join(self.vars) + "] : " + var + "=" + expr_to_isl_string(update.new_val) + " }"
                         domain_restrictions = domain_restrictions.intersect(isl.Set(domain_restriction_str))
+                        update_strs.append(var)
+                    else:
+                        update_strs.append(expr_to_isl_string(update.new_val))
                 update_str = ",".join(update_strs)
                 final_map_str = "{ [" + ",".join(self.vars) + "] -> [" + update_str + "] }"
                 # original
@@ -168,7 +170,7 @@ class Model:
                 isl_p = isl.Val(frac_to_isl(p))
                 mulAff_p = isl.Aff.val_on_domain(guard.space, isl_p)
                 # reversed
-                mp_rev = isl.Map(final_map_str).reverse()
+                mp_rev = isl.Map(final_map_str).intersect_domain(domain_restrictions).reverse()
                 mp_rev = mp_rev.as_pw_multi_aff().coalesce()
                 isl_p_rev = isl.Val(frac_to_isl(p))
                 isl_branch_rev.append((mulAff_p, mp, mp_rev))

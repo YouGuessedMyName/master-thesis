@@ -2,20 +2,23 @@ from adjpdr.helpers import *
 import cdd
 from z3 import Real, Optimize, Sum
 import adjpdr.spaces
+from copy import deepcopy
 
 def Ca(p: V) -> LowerSet:
     return downarrow(p)
 
 def De(F:V, Gk:LowerSet, M: MDP, print_policy: bool = False) -> LowerSet:
+    print("NEWWW")
     policy = M.PhiPolicyArgMax(F)
     if print_policy and M.has_multiple_policies():
         try:
             print("\tPolicy used to compute ZZ: ", [a.label for a in policy])
+            print("\tPOLICY OVERVIEW:")
+            for policy_ in M.possible_policies():
+                print(f"{[a.label for a in policy_]} => {M.PhiPolicy(policy_, deepcopy(F))}")
         except:
             print("\tPolicy used to compute ZZ: ", policy)
-            print("\tPOLICY OVERVIEW:")
-            for policy in M.possible_policies():
-                print(f"{[a.label for a in policy]} => {M.PhiPolicy(policy, F)}")
+
     return M.PsiPolicy(policy, Gk)
 
 def Cs(F: V, _:LowerSet, M: MDP) -> V:

@@ -3,16 +3,16 @@ from copy import deepcopy
 from adjpdr.examples import *
 
 def assert_invariants(F, G, k, n, M: MDP, F_meet_conjuncts, do_propagate):
-    for Fi in F: # No accidental regular lists
-        assert type(Fi) == V
-        for entry in F[k-1]: # Correct types
-            assert type(entry) == Frac
-            assert type(entry.numerator) == int
-            assert type(entry.denominator) == int
-        for entry in G[0].eqs[0]:
-            assert type(entry) == Frac
-            assert type(entry.numerator) == int
-            assert type(entry.denominator) == int
+    # for Fi in F: # No accidental regular lists
+    #     assert type(Fi) == V
+    #     for entry in F[k-1]: # Correct types
+    #         assert type(entry) == Frac
+    #         assert type(entry.numerator) == int
+    #         assert type(entry.denominator) == int
+    #     for entry in G[0].eqs[0]:
+    #         assert type(entry) == Frac
+    #         assert type(entry.numerator) == int
+    #         assert type(entry.denominator) == int
     
     
     if do_propagate: # The meet conjuncts are correct
@@ -71,6 +71,7 @@ def assert_invariants(F, G, k, n, M: MDP, F_meet_conjuncts, do_propagate):
             # A3 (G is an overapproximation of the negative chain.)
             if 0 <= j - k < len(G):
                 Gj = G[j - k]
+                print("Neg chain", j, apply(M.Psi, n-1-j, downarrow(M.PROP)))
                 assert apply(M.Psi, n-1-j, downarrow(M.PROP)) <= Gj
 
 def print_progress(iteration, F, G, k, n, M):

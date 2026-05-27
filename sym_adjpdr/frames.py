@@ -16,7 +16,7 @@ TECHNICAL = "TECHNICAL" # Includes the factors that we abstract away from
 ABSTRACT = "ABSTRACT"
 VERBOSE = "VERBOSE"
 VECTOR = "VECTOR"
-FRAME_PRINTING = VECTOR
+FRAME_PRINTING = ABSTRACT
 
 # ---------- Helpers ----------
 
@@ -212,7 +212,7 @@ class Frame:
         # piecewise product
         prod = f.pw * g.pw
         prod = isl.PwQPolynomial.from_pw_aff(prod.intersect_domain(f.domain))
-        return prod.sum()
+        return vtp(prod.sum().as_qpolynomial().as_aff().get_constant_val()) 
 
     # ---------- slow dot ----------
     @staticmethod
@@ -254,8 +254,8 @@ class Frame:
         self.pw = pw_inter.union_add(point_aff)
     
     def __eq__(self, value):
-        if self.is_empty:
-            return True
+        # if self.is_empty:
+        #     return True
         res = self <= value and value <= self
         return res
     
