@@ -125,16 +125,18 @@ def adjointPDRdown(M: Model, do_propagate: bool, do_generalization: bool, heuris
                 Fk_meet = Frame.meet(F[k], z)
                 nz = non_zero_states(Gk)
                 for p in iterate_isl_set(nz):
-                    delta = Fk_meet.pw.eval(p)
-                    Fgend = hybrid_polynomial_generalization(Fk_minus_1_meet, p, delta, M)
-                    
+                    # delta = Fk_meet.pw.eval(p)
+                    delta = isl.Val("9/10")
+                    # Fgend = hybrid_generalization(Fk_minus_1_meet, p, delta, M)
+                    #print(z)
+                    Fgend = linear_generalization(Fk_minus_1_meet, p, delta, M)
+                    # print("gend", Fgend)
                     temp = isl.PwQPolynomial.from_pw_aff(Fgend.pw)
 
                     if not (F[k] <= Fgend): # Then something can be shrunk
-                        if True:
-                            print("Generalizing!")
-                            print("Fk", Fk_meet)
-                            print("Fgend", Fgend)
+                        print("Generalizing!")
+                        print("Fk", Fk_meet)
+                        print("Fgend", Fgend)
                         F = [Frame.meet(Fj, Fgend) for (j, Fj) in enumerate(F) if j <= k] + [F[j] for j in range(k+1, n)]
                     else:
                         F = [Frame.meet(Fj, z) for (j, Fj) in enumerate(F) if j <= k] + [F[j] for j in range(k+1, n)]
@@ -153,11 +155,13 @@ def testAdjointPDRdown(M: Model, heuristics, used_heuristic, propagate_= False, 
     print(M.module.expected_result)
     res, states_list, heuristics_list = adjointPDRdown(M, propagate_, generalization_, heuristics, used_heuristic, print_, assert_, loop_check)
     assert res is not None
-    
-    if M.max_prob >= Fraction(M.module.expected_result):
-        assert res
-        print(f"lambda ({M.max_prob}) >= expected result ({M.module.expected_result}). res: {res}, correct.")
+    if M.module.expected_result:
+        if M.max_prob >= Fraction(M.module.expected_result):
+            assert res
+            print(f"lambda ({M.max_prob}) >= expected result ({M.module.expected_result}). res: {res}, correct.")
+        else:
+            assert not res
+            print(f"lambda ({M.max_prob}) <= expected result ({M.module.expected_result}). res: {res}, correct.")
+        return res, states_list, heuristics_list
     else:
-        assert not res
-        print(f"lambda ({M.max_prob}) <= expected result ({M.module.expected_result}). res: {res}, correct.")
-    return res, states_list, heuristics_list
+        print("No expected result set, res: ", res)

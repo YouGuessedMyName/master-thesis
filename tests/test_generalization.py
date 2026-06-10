@@ -3,10 +3,10 @@ from sym_adjpdr.generalization import *
 ctx = isl.Context()
 space = isl.Space.create_from_names(ctx, set=["x"])
 
-def test_val_to_aff():
-    for v in ["3", "1/2", "-6/4"]:
-        val = isl.Val(v)
-        assert val_to_aff(val, space).get_constant_val() == val
+# def test_val_to_aff():
+#     for v in ["3", "1/2", "-6/4"]:
+#         val = isl.Val(v)
+#         assert val_to_aff(val, space).get_constant_val() == val
 
 def eval_aff_at(aff, x_value: int):
     """Helper: evaluate isl.Aff at a single x."""

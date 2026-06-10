@@ -33,6 +33,8 @@ def linear_generalization(F: Frame, p: isl.Point, delta: isl.Val, M: Model) -> F
         [(isl.Set.from_point(p), delta)], default_val=Fraction(1)) # No need for infty, 1 suffices since the range is [0,1]
 
     for i, (x, (_lb, ub)) in enumerate(M.vars.items()):
+        if x != "c":
+            break
         # TODO we are repeating work here... In the future have the vars on domain available from M and cache!
         space = M.domain.space
         x_isl = isl.Aff.var_on_domain(space, isl.dim_type.set, i)
@@ -49,14 +51,15 @@ def linear_generalization(F: Frame, p: isl.Point, delta: isl.Val, M: Model) -> F
 
         sigma_subst = p.set_coordinate_val(isl.dim_type.set, i, isl.Val(ub))
         Phi_F = M.Phi(F)
-        Phi_F_eval = Phi_F.pw.eval(sigma_subst).to_python()
+        Phi_F_eval = vtp(Phi_F.pw.eval(sigma_subst))
+        print(f"interpolating: x1 {vtp(cur_val)}, y1 {vtp(delta)}, x2 {ub}, y2 {Phi_F_eval}")
         e = interpolate(
             x1=vtp(cur_val),
             y1=vtp(delta),
             x2=ub,
-            y2=Phi_F.pw.eval(sigma_subst).to_python(),
+            y2=Phi_F_eval,
             var=x_isl,
-            space=sp
+            space=space
         )
         F__ = Frame.from_pieces(M.ctx, M.vars, [(theta, e)], default_val=Fraction(1))
         if M.Phi(F) <= F__:

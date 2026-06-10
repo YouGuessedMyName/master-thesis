@@ -6,13 +6,13 @@ from sym_adjpdr.heuristics import *
 MAX_PROB = Fraction(90,100)
 
 ctx = isl.Context()
-M = Model.from_prism_file(ctx, "prism/chain_small.pm", MAX_PROB, True)
-print("prop", M.prop)
+M = Model.from_prism_file(ctx, "prism/chain_small.pm", MAX_PROB, False)
+# print("prop", M.prop)
 
 heurs = [Cs, Cs1, Cmax]
-used = Cmax
+used = Cs
 
-testAdjointPDRdown(M, heurs, used, propagate_=False, generalization_=False, print_=True, assert_=True, loop_check=True)
+testAdjointPDRdown(M, heurs, used, propagate_=False, generalization_=True, print_=False, assert_=True, loop_check=True)
 
 # REMINDER!!! Input prism files need a more specific format, where:
 # * All case distinctions are explicit
