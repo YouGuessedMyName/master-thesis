@@ -87,10 +87,14 @@ class Model:
     module: Module
     ctx: isl.Context
     prop: Frame
-    isl_commands_phi: list[tuple[isl.Set, list[isl.Aff, isl.PwMultiAff]]]
-    # The Set is a guard, the Aff is a probability value, the Map is the substitution itself.
-    isl_commands_theta: list[tuple[isl.Set, list[isl.Aff, isl.MultiAff, isl.MultiAff]]]
-    # Forward and backward substitutions.
+    isl_commands_phi: list[tuple[isl.Set, list[tuple[isl.Aff, isl.PwMultiAff]]]]
+    # The Set is a guard, the Aff is a probability value, the PwMultiAff is the substitution itself.
+    # Note that for the Phi operator, we explicitly exclude the bad states from the guards.
+    isl_commands_theta: list[tuple[isl.Set, list[tuple[isl.Aff, bool, isl.PwAff | isl.PwMultiAff]]]]
+    # Similarly here, the Set is a guard, the Aff is a probability value.
+    # The boolean is true when it is a constant update and false when it is an invertible update.
+    # If it is constant and u(s)=s', then the isl.PwAff maps s' to 1 and all else to 0.
+    # Otherwise, the isl.MultiAff is a reversed update.
     domain: isl.Set
     bad_frame: Frame
     ctx: isl.Context
@@ -151,30 +155,26 @@ class Model:
         self.isl_commands_theta = []
         for command in self.module.commands:
             guard = conjuncts_to_isl_set(self.vars, command.guards, False)
-            isl_branch_rev = []
+            isl_branch = []
             for p, updates in command.branches:
                 assert len(updates) == len(self.vars)
-                update_strs = []
-                domain_restrictions = isl.Set("{ [" + ",".join(self.vars) + "] }") # To prevent errors when reversing the map!
-                for var, update in zip(self.vars, updates):
-                    if type(update.new_val) == Const:
-                        domain_restriction_str = "{ [" + ",".join(self.vars) + "] : " + var + "=" + expr_to_isl_string(update.new_val) + " }"
-                        domain_restrictions = domain_restrictions.intersect(isl.Set(domain_restriction_str))
-                        update_strs.append(var)
-                    else:
-                        update_strs.append(expr_to_isl_string(update.new_val))
-                update_str = ",".join(update_strs)
-                final_map_str = "{ [" + ",".join(self.vars) + "] -> [" + update_str + "] }"
-                # original
-                mp = isl.Map(final_map_str).as_pw_multi_aff().coalesce()
+                is_constant = any([type(update.new_val) == Const for update in updates])
+                is_invertible = any([type(update.new_val) != Const for update in updates])
+                assert not (is_constant and is_invertible), f'Invalid "mixed" update {update}; in {command.guards} -> {p} : {updates}.'
                 isl_p = isl.Val(frac_to_isl(p))
                 mulAff_p = isl.Aff.val_on_domain(guard.space, isl_p)
-                # reversed
-                mp_rev = isl.Map(final_map_str).intersect_domain(domain_restrictions).reverse()
-                mp_rev = mp_rev.as_pw_multi_aff().coalesce()
-                isl_p_rev = isl.Val(frac_to_isl(p))
-                isl_branch_rev.append((mulAff_p, mp, mp_rev))
-            self.isl_commands_theta.append((guard, isl_branch_rev))
+                if is_constant:
+                    conditions = " and ".join([f"{v} = {u.new_val}" for v,u in zip(self.vars, updates)])
+                    pwaff_string = "{ [" + ",".join(self.vars) + "] -> [1] : " + conditions + "; [" + ",".join(self.vars) + "] -> [0] }"
+                    pwaff = isl.PwAff(pwaff_string)
+                    isl_branch.append((mulAff_p, True, pwaff))
+                else:
+                    map_string = "{ [" + ",".join(self.vars) + "] -> "\
+                        + "[" + ",".join([expr_to_isl_string(u.new_val) for u in updates ]) + "] }"
+                    mp_rev = isl.Map(map_string).reverse()
+                    pw_multi_aff_rev = mp_rev.as_pw_multi_aff().coalesce()
+                    isl_branch.append((mulAff_p, False, pw_multi_aff_rev))
+            self.isl_commands_theta.append((guard, isl_branch))
 
     @staticmethod
     def from_prism_file(ctx: isl.Context, path: str, max_prob: Fraction, set_expected_result: bool = True):

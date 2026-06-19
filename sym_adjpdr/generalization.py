@@ -33,8 +33,6 @@ def linear_generalization(F: Frame, p: isl.Point, delta: isl.Val, M: Model) -> F
         [(isl.Set.from_point(p), delta)], default_val=Fraction(1)) # No need for infty, 1 suffices since the range is [0,1]
 
     for i, (x, (_lb, ub)) in enumerate(M.vars.items()):
-        if x != "c":
-            break
         # TODO we are repeating work here... In the future have the vars on domain available from M and cache!
         space = M.domain.space
         x_isl = isl.Aff.var_on_domain(space, isl.dim_type.set, i)

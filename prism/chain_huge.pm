@@ -1,6 +1,8 @@
 dtmc
 
-const int N = 5;
+// 1000000000000
+
+const int N = 1000000000000;
 
 module grid
 

@@ -58,7 +58,10 @@ class Module:
                                u.new_val.substitute(cname, cval).eval())
                         for u in updates
                     ]
-                    new_branches.append((prob.eval().value, new_updates))
+                    try:
+                        new_branches.append((prob.eval().value, new_updates))
+                    except:
+                        new_branches.append((prob, new_updates))
                 c.branches = new_branches
             # Update labels
             for lname, guards in self.labels.items():
