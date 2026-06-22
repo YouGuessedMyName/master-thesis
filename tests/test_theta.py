@@ -38,7 +38,4 @@ def test_theta_chain_small():
     F = Frame.from_pieces(ctx, cs.vars, [(isl.Set("{ [c=0,g=0] }"), Fraction(1))])
     Fexp = Frame.from_pieces(ctx, cs.vars, [(isl.Set("{ [c=1,g=0] }"), Fraction(19,20)), (isl.Set("{ [c=0,g=1] }"), Fraction(1,20))])
     ThetaF = cs.Theta(F)
-    strFexp = str(Fexp)
-    strThetaF = str(ThetaF)
-    cs_ = cs
     assert ThetaF == Fexp

@@ -189,36 +189,32 @@ class Model:
         return Model(ctx, module, max_prob)
     
     def Phi(self, F: Frame) -> Frame:
-        result_pwaff = to_indicator_function(self.bad, F.domain)
-        for isl_guard, isl_branch in self.isl_commands_phi:
-            guard_update_pwaff = None
-            for mulAff_p, mp in isl_branch:
-                mappedF = F.pw.pullback_pw_multi_aff(mp).intersect_domain(F.domain).coalesce()
-                multid = mappedF.mul(mulAff_p)
-                guard_update_pwaff = multid if guard_update_pwaff is None else guard_update_pwaff.union_add(multid)
-                # TODO should I use union add here or not?
+        # We do it slightly differently than described in the thesis for efficiency reasons.
+        # We first take the sum of all updates that belong to phi, and only then intersect it with phi!
+        phi_F = to_indicator_function(self.bad, F.domain)
+        for phi_set, isl_branch in self.isl_commands_phi:
+            phi_i = isl.PwAff.zero_on_domain(F.domain.space)
+            for p_ij, u in isl_branch:
+                phi_ij = p_ij * F.pw.pullback_pw_multi_aff(u)
+                phi_i = phi_i.union_add(phi_ij)
             
-            guarded_update_pwaff = guard_update_pwaff.intersect_domain(isl_guard)
-            result_pwaff = result_pwaff.union_add(guarded_update_pwaff)
-                
-        return Frame(result_pwaff.intersect_domain(F.domain).coalesce(), F.domain, F.variables, F.factor)
+            guarded_phi_i = phi_i.intersect_domain(phi_set)
+            phi_F = phi_F.union_add(guarded_phi_i)
+        return Frame(phi_F.intersect_domain(F.domain).coalesce(), F.domain, F.variables, F.factor)
     
     def Theta(self, F: Frame) -> Frame:
-        result_pwaff = isl.PwAff.zero_on_domain(F.domain.space)
-        for isl_guard, isl_branch in self.isl_commands_theta:
-            isl_guard_indicator = to_indicator_function(isl_guard, F.domain)
-            guard_update_pwaff = None
-            for mulAff_p, mp, mp_rev in isl_branch:
-                mappedF = (F.pw * isl_guard_indicator)\
-                    .pullback_pw_multi_aff(mp_rev).intersect_domain(F.domain).coalesce()
-                multid = mappedF.mul(mulAff_p)
-                guard_update_pwaff = multid if guard_update_pwaff is None else guard_update_pwaff.union_add(multid)
-            # We need to intersect with the substituted guard?
-            # Yes, but the phi way...
-            
-            guarded_update_pwaff = guard_update_pwaff
-            result_pwaff = result_pwaff.union_add(guarded_update_pwaff)
-        res = result_pwaff.intersect_domain(F.domain).coalesce()
+        theta_F = isl.PwAff.zero_on_domain(F.domain.space)
+        for phi_set, isl_branch in self.isl_commands_theta:
+            phi = to_indicator_function(phi_set, F.domain)
+            for p_ij, is_constant, u in isl_branch:
+                if is_constant:
+                    sat_phi = Frame(F.pw * phi, F.domain, F.variables).sum()
+                    theta_ij = sat_phi * u # In this case, u returns 1 on s' and 0 on all other states.
+                    theta_F = theta_F.union_add(p_ij * theta_ij)
+                else: # In this case, u is the reverted update.
+                    update_ij = p_ij * (phi.pullback_pw_multi_aff(u) * F.pw.pullback_pw_multi_aff(u))
+                    theta_F = theta_F.union_add(update_ij)
+        res = theta_F.intersect_domain(F.domain).coalesce()
         return Frame(res, F.domain, F.variables, F.factor)
 
     def __PsiEq(self, W: Frame, r: Fraction) -> tuple[Frame, Fraction]:
