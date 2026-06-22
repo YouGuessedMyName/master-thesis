@@ -153,14 +153,17 @@ class Frame:
         return Frame(None, make_domain(ctx, variables), variables, 1, True)
 
     # ---------- evaluation ----------
-    def eval(self, s: State) -> Fraction:
+    def eval(self, s: State | isl.Point) -> Fraction:
         ctx = self.domain.get_ctx()
-        point = isl.Point.zero(self.domain.get_space())
+        if type(s) == isl.Point:
+            point = s
+        else:
+            point = isl.Point.zero(self.domain.get_space())
 
-        for i, v in enumerate(self.variables):
-            point = point.set_coordinate_val(
-                isl.dim_type.set, i, isl.Val.int_from_si(ctx, s[v])
-            )
+            for i, v in enumerate(self.variables):
+                point = point.set_coordinate_val(
+                    isl.dim_type.set, i, isl.Val.int_from_si(ctx, s[v])
+                )
 
         val = self.pw.eval(point)
         if val.is_int():

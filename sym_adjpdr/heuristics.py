@@ -1,5 +1,7 @@
 from sym_adjpdr.frames import *
 from sym_adjpdr.model import *
+from sym_adjpdr.generalization import iterate_isl_set, non_zero_states
+import z3
 
 def Ca(M: Model) -> FrameSet:
     F = Frame.zeroes(M.ctx, M.vars)
@@ -15,18 +17,29 @@ def Cs1(F: Frame, G: FrameSet, M: Model) -> Frame:
     res = phi.set_region(zero_set, isl.Val(1))
     return res
 
-def Cmax(F: Frame, _G: FrameSet, M: Model):
-    # TODO: heuristic that takes Cs, but for all values that matter in G, 
-    # they are maximized s.t. the thing still holds.
-    # Alternatively, it may even be viable to make a version of Cb because the G set will be sparse in most benchmark models anyway?
-    # However, I suspect that it will be faster in practice to do something even simpler!
-    # We could even have a case distinction where it counts the amount of states, and based on that decides what is viable.
-    # For the simple line example it even suffices to just account for the one thing.
-    # Even wilder idea: approach the limits in the heuristics as a cure for loops!
-    res = M.Phi(F)
-    res[M.init] = M.max_prob
-    return res
+def CmGen(F: Frame, G: FrameSet, M: Model):
+    Phi_F = M.Phi(F)
+    w, r = G.eqs[0]
+    w_non_zero = list(iterate_isl_set(non_zero_states(G)))
 
+    # Set up and solve equation system.
+    u = [z3.Real(f"u_{i}") for i in range(len(w_non_zero))]
+    opt = z3.Optimize()
+    for ui in u:
+        opt.add(ui >= 0)
+        opt.add(ui <= 1)
+    opt.add(z3.Sum([u[i] * w.eval(s) for i,s in enumerate(w_non_zero)]) <= r)
+    opt.add([u[i] >= Phi_F.eval(s) for i,s in enumerate(w_non_zero)])
+    opt.maximize(z3.Sum(u))
+    opt.check()
+    model = opt.model()
+    sol = [model[ui].as_fraction() for ui in u]
+
+    # Convert back to frame
+    res = Frame.from_pieces(isl.DEFAULT_CONTEXT, F.variables, 
+        [(isl.Set.from_point(s), sol[i]) for i,s in enumerate(w_non_zero)], default_val=Fraction(1))
+    return res
+    
 def Citer(F: Frame, G: FrameSet, M: Model):
     """Conflict heuristic based on simply doing value iteration a couple of times."""
     MAX_ITERS = 1000

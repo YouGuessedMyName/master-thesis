@@ -27,53 +27,18 @@ def non_zero_states(G: FrameSet) -> isl.Set:
 def generalization_framework(F: Frame, G: FrameSet, z: Frame, M: Model, state_generalization: Callable):
     assert len(G.eqs) == 1
     z_ = Frame(z.pw.copy(), F.domain, F.variables)
+    w = G.eqs[0][0]
     r_ = G.eqs[0][1]
+    debug = list(iterate_isl_set(non_zero_states(G)))
+    print(f"{G} has '{debug}' as non-zero entries")
     for s in iterate_isl_set(non_zero_states(G)):
         delta, z_ = state_generalization(F,G,M,z,s)
-        r_ -= delta
+        r_ -= w.eval(s) * delta
         if r_ < 0:
             return z # Generalization failed
-    return z_ # Generalization succeeded
+    return Frame.meet(z, z_) # Generalization succeeded
 
-def linear_generalize_state_conflict(F: Frame, G: FrameSet, M, z: Frame, s: isl.Point) -> tuple[Fraction, Frame]:
-    delta = z.pw.eval(s)
-    for i, xi, (_, u_xi) in enumerate(F.variables.items()):
-        _, F_ = linear_generalize_variable(F, s, delta, i, xi, u_xi, M)
-        F = Frame.meet(F, F_)
-    return delta, F
 
-def linear_generalize_variable(F: Frame, s: isl.Point, delta: isl.Val, i: int, x_i: str, u_xi: int, M: Model) -> tuple[bool, Frame]:
-    space = M.domain.space
-    F_ = Frame.from_pieces(M.ctx, M.vars, [(isl.Set.from_point(s), delta)], default_val=Fraction(1))
-    xi_isl = isl.Aff.var_on_domain(space, isl.dim_type.set, i)
-    s_xi = s.get_coordinate_val(isl.dim_type.set, i)
-    theta = M.domain.copy().add_constraints(
-        [isl.Constraint.equality_from_aff(
-                isl.Aff.var_on_domain(space, isl.dim_type.set, j) 
-            - 
-                s.get_coordinate_val(isl.dim_type.set, j))
-            for j in range(len(M.vars)) if j != i
-        ]
-        )
-    theta = theta.add_constraint(isl.Constraint.inequality_from_aff(xi_isl - s_xi)) # xi - s(xi) <= 0 <-> s(xi) <= xi
-    # Note that the constraint xi <= u_xi is already implicit in the domain size!
-
-    s_x_i_to_u_xi = s.set_coordinate_val(isl.dim_type.set, i, isl.Val(u_xi))
-    Phi_F = M.Phi(F)
-    m_xi = vtp(Phi_F.pw.eval(s_x_i_to_u_xi))
-    print(f"interpolating: x1 {vtp(s_xi)}, y1 {vtp(delta)}, x2 {u_xi}, y2 {m_xi}")
-    e = interpolate(
-        x1=vtp(s_xi),
-        y1=vtp(delta),
-        x2=u_xi,
-        y2=m_xi,
-        var=xi_isl,
-        space=space
-    )
-    F__ = Frame.from_pieces(M.ctx, M.vars, [(theta, e)], default_val=Fraction(1))
-    if M.Phi(F) <= F__:
-        return True, Frame.meet(F_, F__)
-    return False, F
 
 # def linear_generalize_variable(F: Frame, p: isl.Point, delta: isl.Val, M: Model) -> Frame:
 #     assert M.Phi(F).pw.eval(p) <= delta

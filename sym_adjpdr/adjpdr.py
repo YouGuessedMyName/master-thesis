@@ -2,6 +2,7 @@ from sym_adjpdr.frames import *
 from sym_adjpdr.model import *
 from sym_adjpdr.heuristics import *
 from sym_adjpdr.generalization import *
+from sym_adjpdr.linear_generalization import *
 
 def print_progress(iteration, F, G, k, n, M):
     print(f"\n{iteration}")
@@ -46,16 +47,9 @@ def adjointPDRdown(M: Model, do_propagate: bool, do_generalization: bool, heuris
 
         # POSITIVELY CONCLUSIVE
         for j in range(len(F)-1):
-            #print(f"Fj {F[j]}, Fj+1 {F[j+1]}")
-            #if len(F[j]) >= 1 and all([isclose(x, y, rel_tol=1e-4) for x, y in zip(F[j], F[j+1])]):
-            #print(f"\t comparing: {F[j]} and {F[j+1]}")
             if not F[j].is_empty and F[j+1] <= F[j]:
                 if assert_:
-                    x = M.Phi(F[j])
-                    # print(F[j])
-                    # print()
-                    # print(x)
-                    assert M.Phi(F[j]) <= F[j] if assert_ else None
+                    assert M.Phi(F[j]) <= F[j] and F[j] <= M.prop, "Algorithm terminated, but no inductive invariant..."
                 if print_:
                     print(f"After {iteration-1} iterations")
                     print("Inducitive invariant:", F[j]) if print_ else None
@@ -121,25 +115,12 @@ def adjointPDRdown(M: Model, do_propagate: bool, do_generalization: bool, heuris
             
             # GENERALIZATION
             if do_generalization:
-                Fk_minus_1_meet = Frame.meet(F[k-1], z)
-                Fk_meet = Frame.meet(F[k], z)
-                nz = non_zero_states(Gk)
-                for p in iterate_isl_set(nz):
-                    # delta = Fk_meet.pw.eval(p)
-                    delta = isl.Val("9/10")
-                    # Fgend = hybrid_generalization(Fk_minus_1_meet, p, delta, M)
-                    #print(z)
-                    Fgend = linear_generalize_variable(Fk_minus_1_meet, p, delta, M)
-                    # print("gend", Fgend)
-                    temp = isl.PwQPolynomial.from_pw_aff(Fgend.pw)
-
-                    if not (F[k] <= Fgend): # Then something can be shrunk
-                        print("Generalizing!")
-                        print("Fk", Fk_meet)
-                        print("Fgend", Fgend)
-                        F = [Frame.meet(Fj, Fgend) for (j, Fj) in enumerate(F) if j <= k] + [F[j] for j in range(k+1, n)]
-                    else:
-                        F = [Frame.meet(Fj, z) for (j, Fj) in enumerate(F) if j <= k] + [F[j] for j in range(k+1, n)]
+                z_ = generalization_framework(F[k-1], Gk, z, M, linear_generalize_state_conflict)
+                inv = Frame.meet(F[k-1], z_)
+                if inv <= M.prop and M.Phi(inv) <= inv:
+                    return True, states_so_far, heuristics_so_far
+                print("\tz_: ", z_) if print_ else None
+                F = [Frame.meet(Fj, z_) for (j, Fj) in enumerate(F) if j <= k] + [F[j] for j in range(k+1, n)]
             else:
                 F = [Frame.meet(Fj, z) for (j, Fj) in enumerate(F) if j <= k] + [F[j] for j in range(k+1, n)]
             

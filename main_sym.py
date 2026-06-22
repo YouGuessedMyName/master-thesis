@@ -9,8 +9,8 @@ ctx = isl.Context()
 M = Model.from_prism_file(ctx, "prism/lingen.pm", MAX_PROB, False)
 # print("prop", M.prop)
 
-heurs = [Cs, Cs1, Cmax]
-used = Cs
+heurs = [CmGen]
+used = CmGen
 
 testAdjointPDRdown(M, heurs, used, propagate_=False, generalization_=True, print_=True, assert_=True, loop_check=True)
 
