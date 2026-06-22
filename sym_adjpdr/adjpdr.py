@@ -129,7 +129,7 @@ def adjointPDRdown(M: Model, do_propagate: bool, do_generalization: bool, heuris
                     delta = isl.Val("9/10")
                     # Fgend = hybrid_generalization(Fk_minus_1_meet, p, delta, M)
                     #print(z)
-                    Fgend = linear_generalization(Fk_minus_1_meet, p, delta, M)
+                    Fgend = linear_generalize_variable(Fk_minus_1_meet, p, delta, M)
                     # print("gend", Fgend)
                     temp = isl.PwQPolynomial.from_pw_aff(Fgend.pw)
 

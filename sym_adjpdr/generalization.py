@@ -24,46 +24,96 @@ def non_zero_states(G: FrameSet) -> isl.Set:
         res = res.union(gt)
     return res.coalesce()
 
-    # Idea .sample_point()!!
+def generalization_framework(F: Frame, G: FrameSet, z: Frame, M: Model, state_generalization: Callable):
+    assert len(G.eqs) == 1
+    z_ = Frame(z.pw.copy(), F.domain, F.variables)
+    r_ = G.eqs[0][1]
+    for s in iterate_isl_set(non_zero_states(G)):
+        delta, z_ = state_generalization(F,G,M,z,s)
+        r_ -= delta
+        if r_ < 0:
+            return z # Generalization failed
+    return z_ # Generalization succeeded
 
-def linear_generalization(F: Frame, p: isl.Point, delta: isl.Val, M: Model) -> Frame:
-    assert M.Phi(F).pw.eval(p) <= delta
+def linear_generalize_state_conflict(F: Frame, G: FrameSet, M, z: Frame, s: isl.Point) -> tuple[Fraction, Frame]:
+    delta = z.pw.eval(s)
+    for i, xi, (_, u_xi) in enumerate(F.variables.items()):
+        _, F_ = linear_generalize_variable(F, s, delta, i, xi, u_xi, M)
+        F = Frame.meet(F, F_)
+    return delta, F
 
-    F_ = Frame.from_pieces(M.ctx, M.vars, 
-        [(isl.Set.from_point(p), delta)], default_val=Fraction(1)) # No need for infty, 1 suffices since the range is [0,1]
-
-    for i, (x, (_lb, ub)) in enumerate(M.vars.items()):
-        # TODO we are repeating work here... In the future have the vars on domain available from M and cache!
-        space = M.domain.space
-        x_isl = isl.Aff.var_on_domain(space, isl.dim_type.set, i)
-        cur_val = p.get_coordinate_val(isl.dim_type.set, i)
-        theta = M.domain.copy().add_constraints(
-            [isl.Constraint.equality_from_aff(
-                    isl.Aff.var_on_domain(space, isl.dim_type.set, j) 
-                - 
-                    p.get_coordinate_val(isl.dim_type.set, j))
-                for j in range(len(M.vars)) if j != i
-            ]
-            )
-        theta = theta.add_constraint(isl.Constraint.inequality_from_aff(x_isl - cur_val))
-
-        sigma_subst = p.set_coordinate_val(isl.dim_type.set, i, isl.Val(ub))
-        Phi_F = M.Phi(F)
-        Phi_F_eval = vtp(Phi_F.pw.eval(sigma_subst))
-        print(f"interpolating: x1 {vtp(cur_val)}, y1 {vtp(delta)}, x2 {ub}, y2 {Phi_F_eval}")
-        e = interpolate(
-            x1=vtp(cur_val),
-            y1=vtp(delta),
-            x2=ub,
-            y2=Phi_F_eval,
-            var=x_isl,
-            space=space
+def linear_generalize_variable(F: Frame, s: isl.Point, delta: isl.Val, i: int, x_i: str, u_xi: int, M: Model) -> tuple[bool, Frame]:
+    space = M.domain.space
+    F_ = Frame.from_pieces(M.ctx, M.vars, [(isl.Set.from_point(s), delta)], default_val=Fraction(1))
+    xi_isl = isl.Aff.var_on_domain(space, isl.dim_type.set, i)
+    s_xi = s.get_coordinate_val(isl.dim_type.set, i)
+    theta = M.domain.copy().add_constraints(
+        [isl.Constraint.equality_from_aff(
+                isl.Aff.var_on_domain(space, isl.dim_type.set, j) 
+            - 
+                s.get_coordinate_val(isl.dim_type.set, j))
+            for j in range(len(M.vars)) if j != i
+        ]
         )
-        F__ = Frame.from_pieces(M.ctx, M.vars, [(theta, e)], default_val=Fraction(1))
-        if M.Phi(F) <= F__:
-            F_ = Frame.meet(F_, F__)
+    theta = theta.add_constraint(isl.Constraint.inequality_from_aff(xi_isl - s_xi)) # xi - s(xi) <= 0 <-> s(xi) <= xi
+    # Note that the constraint xi <= u_xi is already implicit in the domain size!
 
-    return F_
+    s_x_i_to_u_xi = s.set_coordinate_val(isl.dim_type.set, i, isl.Val(u_xi))
+    Phi_F = M.Phi(F)
+    m_xi = vtp(Phi_F.pw.eval(s_x_i_to_u_xi))
+    print(f"interpolating: x1 {vtp(s_xi)}, y1 {vtp(delta)}, x2 {u_xi}, y2 {m_xi}")
+    e = interpolate(
+        x1=vtp(s_xi),
+        y1=vtp(delta),
+        x2=u_xi,
+        y2=m_xi,
+        var=xi_isl,
+        space=space
+    )
+    F__ = Frame.from_pieces(M.ctx, M.vars, [(theta, e)], default_val=Fraction(1))
+    if M.Phi(F) <= F__:
+        return True, Frame.meet(F_, F__)
+    return False, F
+
+# def linear_generalize_variable(F: Frame, p: isl.Point, delta: isl.Val, M: Model) -> Frame:
+#     assert M.Phi(F).pw.eval(p) <= delta
+    
+
+#     F_ = Frame.from_pieces(M.ctx, M.vars, 
+#         [(isl.Set.from_point(p), delta)], default_val=Fraction(1)) # No need for infty, 1 suffices since the range is [0,1]
+
+#     for i, (x, (_lb, ub)) in enumerate(M.vars.items()):
+#         # TODO we are repeating work here... In the future have the vars on domain available from M and cache!
+#         space = M.domain.space
+#         x_isl = isl.Aff.var_on_domain(space, isl.dim_type.set, i)
+#         cur_val = p.get_coordinate_val(isl.dim_type.set, i)
+#         theta = M.domain.copy().add_constraints(
+#             [isl.Constraint.equality_from_aff(
+#                     isl.Aff.var_on_domain(space, isl.dim_type.set, j) 
+#                 - 
+#                     p.get_coordinate_val(isl.dim_type.set, j))
+#                 for j in range(len(M.vars)) if j != i
+#             ]
+#             )
+#         theta = theta.add_constraint(isl.Constraint.inequality_from_aff(x_isl - cur_val))
+
+#         sigma_subst = p.set_coordinate_val(isl.dim_type.set, i, isl.Val(ub))
+#         Phi_F = M.Phi(F)
+#         Phi_F_eval = vtp(Phi_F.pw.eval(sigma_subst))
+#         print(f"interpolating: x1 {vtp(cur_val)}, y1 {vtp(delta)}, x2 {ub}, y2 {Phi_F_eval}")
+#         e = interpolate(
+#             x1=vtp(cur_val),
+#             y1=vtp(delta),
+#             x2=ub,
+#             y2=Phi_F_eval,
+#             var=x_isl,
+#             space=space
+#         )
+#         F__ = Frame.from_pieces(M.ctx, M.vars, [(theta, e)], default_val=Fraction(1))
+#         if M.Phi(F) <= F__:
+#             F_ = Frame.meet(F_, F__)
+
+#     return F_
 
 def isl_point_to_sym_state(p: isl.Point, sym_vars: list[sp.Symbol]) -> dict[sp.Symbol, Fraction]:
     return {x : vtp(p.get_coordinate_val(i)) for i, x in enumerate(sym_vars)}
