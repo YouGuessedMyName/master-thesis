@@ -42,6 +42,7 @@ def linear_generalize_variable(F: Frame, s: isl.Point, delta: isl.Val, i: int, x
     F__ = Frame.from_pieces(M.ctx, M.vars, [(theta, e)], default_val=Fraction(1))
     if M.Phi(F) <= F__:
         print(f"var: {x_i}; interpolating: x1 {vtp(s_xi)}, y1 {vtp(delta)}, x2 {u_xi}, y2 {m_xi}, SUCCESS.")
+        print(f"e: {e}")
         print(f"gen res: {F__}")
         return True, Frame.meet(F_, F__)
     print(f"var: {x_i}; interpolating: x1 {vtp(s_xi)}, y1 {vtp(delta)}, x2 {u_xi}, y2 {m_xi}, FAIL.")

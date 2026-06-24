@@ -8,77 +8,35 @@ from sym_adjpdr.sympy_to_z3 import *
 
 PARTITIONS = None
 
+def Phi_generalization(F: Frame, G: FrameSet, z: Frame, M: Model, _ = None):
+    assert len(G.eqs) == 1
+    w = G.eqs[0][0]
+    z_non_zero = z.pw.intersect_domain(w.pw.non_zero_set())
+    Phi_zero = M.Phi(F).pw.intersect_domain(w.pw.zero_set())
+    return Frame(z_non_zero.union_add(Phi_zero), F.domain, F.variables)
+
+def no_generalization(_F: Frame, _G: FrameSet, z: Frame, _M: Model, _ = None):
+    return z
+
 def iterate_isl_set(S: isl.Set) -> Iterator[isl.Point]:
     while not S.is_empty():
         p = S.sample_point()
         yield p
         S = S.subtract(isl.Set.from_point(p))
 
-def non_zero_states(G: FrameSet) -> isl.Set:
-    """Return a isl.Set containing exactly the states/points in the FrameSet where the coefficient is non-zero."""
-    assert len(G.eqs) == 1
-    pw = G.eqs[0][0].pw
-    res = isl.Set.empty(pw.get_domain_space())
-    for guard, aff in pw.get_pieces():
-        gt = aff.gt_set(isl.Aff.zero_on_domain(guard.space)).intersect(guard)
-        res = res.union(gt)
-    return res.coalesce()
-
 def generalization_framework(F: Frame, G: FrameSet, z: Frame, M: Model, state_generalization: Callable):
     assert len(G.eqs) == 1
     z_ = Frame(z.pw.copy(), F.domain, F.variables)
     w = G.eqs[0][0]
     r_ = G.eqs[0][1]
-    debug = list(iterate_isl_set(non_zero_states(G)))
+    debug = list(iterate_isl_set(w.pw.non_zero_set()))
     print(f"{G} has '{debug}' as non-zero entries")
-    for s in iterate_isl_set(non_zero_states(G)):
+    for s in iterate_isl_set(w.pw.non_zero_set()):
         delta, z_ = state_generalization(F,G,M,z,s)
         r_ -= w.eval(s) * delta
         if r_ < 0:
             return z # Generalization failed
     return Frame.meet(z, z_) # Generalization succeeded
-
-
-
-# def linear_generalize_variable(F: Frame, p: isl.Point, delta: isl.Val, M: Model) -> Frame:
-#     assert M.Phi(F).pw.eval(p) <= delta
-    
-
-#     F_ = Frame.from_pieces(M.ctx, M.vars, 
-#         [(isl.Set.from_point(p), delta)], default_val=Fraction(1)) # No need for infty, 1 suffices since the range is [0,1]
-
-#     for i, (x, (_lb, ub)) in enumerate(M.vars.items()):
-#         # TODO we are repeating work here... In the future have the vars on domain available from M and cache!
-#         space = M.domain.space
-#         x_isl = isl.Aff.var_on_domain(space, isl.dim_type.set, i)
-#         cur_val = p.get_coordinate_val(isl.dim_type.set, i)
-#         theta = M.domain.copy().add_constraints(
-#             [isl.Constraint.equality_from_aff(
-#                     isl.Aff.var_on_domain(space, isl.dim_type.set, j) 
-#                 - 
-#                     p.get_coordinate_val(isl.dim_type.set, j))
-#                 for j in range(len(M.vars)) if j != i
-#             ]
-#             )
-#         theta = theta.add_constraint(isl.Constraint.inequality_from_aff(x_isl - cur_val))
-
-#         sigma_subst = p.set_coordinate_val(isl.dim_type.set, i, isl.Val(ub))
-#         Phi_F = M.Phi(F)
-#         Phi_F_eval = vtp(Phi_F.pw.eval(sigma_subst))
-#         print(f"interpolating: x1 {vtp(cur_val)}, y1 {vtp(delta)}, x2 {ub}, y2 {Phi_F_eval}")
-#         e = interpolate(
-#             x1=vtp(cur_val),
-#             y1=vtp(delta),
-#             x2=ub,
-#             y2=Phi_F_eval,
-#             var=x_isl,
-#             space=space
-#         )
-#         F__ = Frame.from_pieces(M.ctx, M.vars, [(theta, e)], default_val=Fraction(1))
-#         if M.Phi(F) <= F__:
-#             F_ = Frame.meet(F_, F__)
-
-#     return F_
 
 def isl_point_to_sym_state(p: isl.Point, sym_vars: list[sp.Symbol]) -> dict[sp.Symbol, Fraction]:
     return {x : vtp(p.get_coordinate_val(i)) for i, x in enumerate(sym_vars)}

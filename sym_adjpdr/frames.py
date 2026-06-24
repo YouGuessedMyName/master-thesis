@@ -43,9 +43,6 @@ def enumerate_states(variables: Vars) -> Iterator[State]:
 def frac_to_isl(fr: Fraction) -> str:
     return f"{fr.numerator}/{fr.denominator}"
 
-from fractions import Fraction
-import islpy as isl
-
 def pretty_print_pwaff(pw: isl.PwAff, name: str = "f", factor: int = 1) -> str:
     """
     Pretty print a PwAff as a piecewise function, removing unnecessary
@@ -273,8 +270,8 @@ class Frame:
         if isinstance(region, dict):
             region: isl.Set = make_domain(self.domain.get_ctx(), region)
         aff = isl.Aff.val_on_domain(region.get_space(), val).intersect_domain(region)
-        zeroed = self.pw.subtract_domain(region).union_min(aff)
-        return Frame(zeroed, self.domain, self.variables, self.factor)
+        pw_with_val = self.pw.subtract_domain(region).union_min(aff)
+        return Frame(pw_with_val, self.domain, self.variables, self.factor)
     
     def sum_over_region(self, region: dict[str, tuple[int, int]] | isl.Set):
         if isinstance(region, dict):
@@ -284,6 +281,15 @@ class Frame:
         res2 = vtp(regionalized.sum().as_qpolynomial().as_aff().get_constant_val())
         #assert res == res2
         return res2
+    
+    def set_point(self, p: isl.Point, val: isl.Val):
+        region = isl.Set.from_point(p)
+        aff = isl.Aff.val_on_domain(region.get_space(), val).intersect_domain(region)
+        pw_with_val = self.pw.subtract_domain(region).union_min(aff)
+        return Frame(pw_with_val, self.domain, self.variables)
+    
+    def copy(self) -> "Frame":
+        return Frame(self.pw.copy(), self.domain, self.variables)
     
     def __mul__(self, other):
         return Frame(self.pw * other.pw, self.domain, self.variables)

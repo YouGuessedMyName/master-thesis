@@ -123,5 +123,3 @@ def meet_Zk_fast(r, r0, v):
     #print("Zk overapprox!!!", [str(w) for w in res])
     return meet(res)
             
-
-    
