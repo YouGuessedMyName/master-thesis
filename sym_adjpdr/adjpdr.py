@@ -121,13 +121,14 @@ def adjointPDRdown(M: Model, do_propagate: bool, heuristics, used_heuristic, gen
                     z_g = generalization_framework(F[k-1], Gk, z, M, gen)
                 if gen == used_generalization:
                     z_ = z_g
-            inv = Frame.meet(F[k-1], z_)
+            inv = Frame.meet(F[k], z_)
             if inv <= M.prop and M.Phi(inv) <= inv:
                 if print_:
                     print(f"After {iteration-1} iterations")
                     print("Inducitive invariant:", inv)
                 return True, states_so_far, heuristics_so_far
             print("\tz_: ", z_) if print_ else None
+            print("\tinv: ", inv) if print_ else None
             F = [Frame.meet(Fj, z_) for (j, Fj) in enumerate(F) if j <= k] + [F[j] for j in range(k+1, n)]
             
             if do_propagate:

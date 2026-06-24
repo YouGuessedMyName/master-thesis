@@ -82,11 +82,9 @@ def CbGen(F: Frame, G: FrameSet, M: Model) -> Frame:
     min = M.Phi(F)
     meetZk = compute_meet(M.Phi(F), w, r, coeffs.copy(), None, Frame.ones(isl.DEFAULT_CONTEXT, F.variables), Frame.ones(isl.DEFAULT_CONTEXT, F.variables))
     
-    if meetZk == Frame.ones(isl.DEFAULT_CONTEXT, F.variables):
-        return min
-    else:
-        res = Frame.from_pieces(isl.DEFAULT_CONTEXT, F.variables, 
-            [(isl.Set.from_point(s), meetZk.eval(s)) for i,s in enumerate(coeffs)], default_val=Fraction(1))
-        print(res)
-        assert res in G
+    if meetZk == Frame.ones(isl.DEFAULT_CONTEXT, F.variables): # Zk is empty...
+        meetZk = min
+    
+    res = Frame.from_pieces(isl.DEFAULT_CONTEXT, F.variables, 
+        [(isl.Set.from_point(s), meetZk.eval(s)) for i,s in enumerate(coeffs)], default_val=Fraction(1))
     return res
