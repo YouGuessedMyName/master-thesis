@@ -85,6 +85,14 @@ def CbGen(F: Frame, G: FrameSet, M: Model) -> Frame:
     if meetZk == Frame.ones(isl.DEFAULT_CONTEXT, F.variables): # Zk is empty...
         meetZk = min
     
+    # New
     res = Frame.from_pieces(isl.DEFAULT_CONTEXT, F.variables, 
         [(isl.Set.from_point(s), meetZk.eval(s)) for i,s in enumerate(coeffs)], default_val=Fraction(1))
+    
+    # Old
+    # res = Frame.from_pieces(isl.DEFAULT_CONTEXT, F.variables, 
+    #     [(isl.Set.from_point(s), meetZk.eval(s)) for i,s in enumerate(coeffs)], default_val=Fraction(1))
+    # nzs = res.pw.intersect_domain(w.pw.non_zero_set())
+    # zs = M.Phi(F).pw.intersect_domain(w.pw.zero_set())
+    # res.pw = nzs.union_max(zs)
     return res

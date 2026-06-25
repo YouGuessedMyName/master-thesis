@@ -32,7 +32,6 @@ def generalization_framework(F: Frame, G: FrameSet, z: Frame, M: Model, state_ge
     for s in iterate_isl_set(w.pw.non_zero_set()):
         delta, z__ = state_generalization(F,G,M,z,s)
         res = Frame.meet(res, z__)
-        str_z_ = str(res)
         r_ -= w.eval(s) * delta
         if r_ < 0:
             return z # Generalization failed
