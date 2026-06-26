@@ -24,18 +24,18 @@ def iterate_isl_set(S: isl.Set) -> Iterator[isl.Point]:
 
 def generalization_framework(F: Frame, G: FrameSet, z: Frame, M: Model, state_generalization: Callable):
     assert len(G.eqs) == 1
-    res = Frame.ones(isl.DEFAULT_CONTEXT, F.variables)
+    F_res = Frame.ones(isl.DEFAULT_CONTEXT, F.variables)
     w = G.eqs[0][0]
     r_ = G.eqs[0][1]
-    debug = list(iterate_isl_set(w.pw.non_zero_set()))
-    print(f"{G} has '{debug}' as non-zero entries")
+    # debug = list(iterate_isl_set(w.pw.non_zero_set()))
+    # print(f"{G} has '{debug}' as non-zero entries")
     for s in iterate_isl_set(w.pw.non_zero_set()):
-        delta, z__ = state_generalization(F,G,M,z,s)
-        res = Frame.meet(res, z__)
+        delta, F_s = state_generalization(F,G,M,z,s)
+        F_res = Frame.meet(F_res, F_s)
         r_ -= w.eval(s) * delta
         if r_ < 0:
             return z # Generalization failed
-    return res # Generalization succeeded
+    return F_res # Generalization succeeded
 
 def isl_point_to_sym_state(p: isl.Point, sym_vars: list[sp.Symbol]) -> dict[sp.Symbol, Fraction]:
     return {x : vtp(p.get_coordinate_val(i)) for i, x in enumerate(sym_vars)}

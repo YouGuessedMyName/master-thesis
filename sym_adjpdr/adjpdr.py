@@ -122,14 +122,22 @@ def adjointPDRdown(M: Model, do_propagate: bool, heuristics, used_heuristic, gen
                 if gen == used_generalization:
                     z_ = z_g
             inv = Frame.meet(F[k], z_)
+            print("\tz_: ", z_) if print_ else None
+            print("\tinv: ", inv) if print_ else None
             if inv <= M.prop and M.Phi(inv) <= inv:
                 if print_:
                     print(f"After {iteration-1} iterations")
                     print("Inducitive invariant:", inv)
                 return True, states_so_far, heuristics_so_far
-            print("\tz_: ", z_) if print_ else None
-            print("\tinv: ", inv) if print_ else None
-            F = [Frame.meet(Fj, z_) for (j, Fj) in enumerate(F) if j <= k] + [F[j] for j in range(k+1, n)]
+            
+            if not inv in F:
+                if assert_:
+                    assert z_g in Gk
+                    assert M.Phi(Frame.meet(F[k-1], z_g)) <= z_g
+                F = [Frame.meet(Fj, z_) for (j, Fj) in enumerate(F) if j <= k] + [F[j] for j in range(k+1, n)]
+            else: # Fallback
+                print("Fallback") if print_ else None
+                F = [Frame.meet(Fj, z) for (j, Fj) in enumerate(F) if j <= k] + [F[j] for j in range(k+1, n)]
             
             if do_propagate:
                 F_meet_conjuncts = [Fj_conjuncts + [z] for (j, Fj_conjuncts) in enumerate(F_meet_conjuncts) if j <= k] \

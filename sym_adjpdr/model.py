@@ -216,6 +216,19 @@ class Model:
                     theta_F = theta_F.union_add(update_ij)
         res = theta_F.intersect_domain(F.domain).coalesce()
         return Frame(res, F.domain, F.variables, F.factor)
+    
+    def Chi(self, F: Frame) -> Frame:
+        one = self.Phi(F)
+        two = self.Phi(one)
+        eq_set = one.pw.eq_set(two.pw).intersect(one.pw.non_zero_set())
+        eq_vals = one.pw.intersect_domain(eq_set)
+        res = Frame.ones(isl.DEFAULT_CONTEXT, F.variables)
+        res.pw = res.pw.union_min(eq_vals)
+        # print("F", F)
+        # print("one", one)
+        # print("two", two)
+        # print("res", res)
+        return res
 
     def __PsiEq(self, W: Frame, r: Fraction) -> tuple[Frame, Fraction]:
         U = (self.good_frame * W)

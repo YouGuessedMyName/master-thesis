@@ -14,12 +14,6 @@ def De(_F: Frame, G: FrameSet, M: Model, _print_policiy: bool = False) -> FrameS
 def Cs(F: Frame, _G: FrameSet, M: Model) -> Frame:
     return M.Phi(F)
 
-# def Cs1(F: Frame, G: FrameSet, M: Model) -> Frame:
-#     zero_set = G.eqs[0][0].pw.zero_set()
-#     phi = M.Phi(F)
-#     res = phi.set_region(zero_set, isl.Val(1))
-#     return res
-
 def CmGen(F: Frame, G: FrameSet, M: Model) -> Frame:
     Phi_F = M.Phi(F)
     w, r = G.eqs[0]
@@ -41,6 +35,8 @@ def CmGen(F: Frame, G: FrameSet, M: Model) -> Frame:
     # Convert back to frame
     res = Frame.from_pieces(isl.DEFAULT_CONTEXT, F.variables, 
         [(isl.Set.from_point(s), sol[i]) for i,s in enumerate(w_non_zero)], default_val=Fraction(1))
+    
+    res = Frame.meet(res, M.Chi(F))
     return res
 
 def compute_meet(min: Frame, w: Frame, r_: Fraction, coeffs: list[isl.Point], s: isl.Point | None, d: Frame, Z: Frame):
@@ -87,12 +83,7 @@ def CbGen(F: Frame, G: FrameSet, M: Model) -> Frame:
     
     # New
     res = Frame.from_pieces(isl.DEFAULT_CONTEXT, F.variables, 
-        [(isl.Set.from_point(s), meetZk.eval(s)) for i,s in enumerate(coeffs)], default_val=Fraction(1))
-    
-    # Old
-    # res = Frame.from_pieces(isl.DEFAULT_CONTEXT, F.variables, 
-    #     [(isl.Set.from_point(s), meetZk.eval(s)) for i,s in enumerate(coeffs)], default_val=Fraction(1))
-    # nzs = res.pw.intersect_domain(w.pw.non_zero_set())
-    # zs = M.Phi(F).pw.intersect_domain(w.pw.zero_set())
-    # res.pw = nzs.union_max(zs)
+        [(isl.Set.from_point(s), meetZk.eval(s)) for i,s in enumerate(coeffs)], default_val=1)
+
+    res = Frame.meet(res, M.Chi(F))
     return res

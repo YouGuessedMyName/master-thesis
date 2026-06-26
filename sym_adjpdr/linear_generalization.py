@@ -57,8 +57,8 @@ def linear_generalize_variable(F: Frame, s: isl.Point, delta: isl.Val, i: int, x
     # Note that the constraint xi <= u_xi is already implicit in the domain size!
 
     s_x_i_to_u_xi = s.set_coordinate_val(isl.dim_type.set, i, isl.Val(u_xi))
-    Phi_F = M.Phi(F)
-    m_xi = vtp(Phi_F.pw.eval(s_x_i_to_u_xi))
+    Phi2_F = M.Phi(M.Phi(F))
+    m_xi = vtp(Phi2_F.pw.eval(s_x_i_to_u_xi))
     
     e = interpolate(
         x1=vtp(s_xi),

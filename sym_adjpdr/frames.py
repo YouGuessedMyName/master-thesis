@@ -172,6 +172,8 @@ class Frame:
     def __le__(self, other: "Frame") -> bool:
         if self.is_empty:
             return True
+        if other.is_empty:
+            return self.is_empty
         return self.pw.le_set(other.pw).is_equal(self.domain)
     
     def __lt__(self, other: "Frame") -> bool:
@@ -190,6 +192,8 @@ class Frame:
     def meet(f: "Frame", g: "Frame") -> "Frame":
         if f.is_empty:
             return f
+        if g.is_empty:
+            return g
         assert f.factor == g.factor
         pw = f.pw.min(g.pw)
         return Frame(pw.coalesce(), f.domain, f.variables, f.factor)
