@@ -102,8 +102,9 @@ class Model:
     init: dict[str, Fraction]
     good: isl.Set
     good_frame: Frame
+    no_generalize_partitions: int = 1e4
 
-    def __init__(self, ctx: isl.Context, module: Module, max_prob: Fraction, initial_state: dict[str, Fraction] | None = None):
+    def __init__(self, ctx: isl.Context, module: Module, max_prob: Fraction, no_generalize_partitions: int = 1e4, initial_state: dict[str, Fraction] | None = None):
         self.init = {v: lb for v, (lb, _ub) in module.variables.items()}
         self.max_prob = max_prob
         self.ctx = ctx
@@ -120,6 +121,7 @@ class Model:
         self.good_frame = Frame(to_indicator_function(self.good, self.domain), self.domain, self.vars)
 
         self.factor = module.lcm
+        self.no_generalize_partitions =  no_generalize_partitions
         self.module = module
 
         self.ctx = isl.Context()
@@ -160,7 +162,7 @@ class Model:
                 assert len(updates) == len(self.vars)
                 is_constant = any([type(update.new_val) == Const for update in updates])
                 is_invertible = any([type(update.new_val) != Const for update in updates])
-                assert not (is_constant and is_invertible), f'Invalid "mixed" update {update}; in {command.guards} -> {p} : {updates}.'
+                assert not (is_constant and is_invertible), f'Invalid "mixed" update in {command.guards} -> {p} : {updates}.'
                 isl_p = isl.Val(frac_to_isl(p))
                 mulAff_p = isl.Aff.val_on_domain(guard.space, isl_p)
                 if is_constant:

@@ -40,14 +40,10 @@ def linear_generalize_state_binary(F: Frame, _G: FrameSet, M: Model, _z: Frame, 
         result_frame = Frame.ones(isl.DEFAULT_CONTEXT, F.variables)
     return min_ub, result_frame
 
-def linear_generalize_variable(F: Frame, s: isl.Point, delta: isl.Val, i: int, x_i: str, u_xi: int, M: Model) -> tuple[bool, Frame]:
-    space = M.domain.space
-    F_ = Frame.from_pieces(M.ctx, M.vars, [(isl.Set.from_point(s), delta)], default_val=Fraction(1))
-    xi_isl = isl.Aff.var_on_domain(space, isl.dim_type.set, i)
-    s_xi = s.get_coordinate_val(isl.dim_type.set, i)
+def theta_domain(i: int, xi_isl: isl.Aff, s_xi: isl.Val, s: isl.Point, M: Model):
     theta: isl.Set = M.domain.copy().add_constraints(
         [isl.Constraint.equality_from_aff(
-                isl.Aff.var_on_domain(space, isl.dim_type.set, j) 
+                isl.Aff.var_on_domain(M.domain.space, isl.dim_type.set, j) 
             - 
                 s.get_coordinate_val(isl.dim_type.set, j))
             for j in range(len(M.vars)) if j != i
@@ -55,6 +51,14 @@ def linear_generalize_variable(F: Frame, s: isl.Point, delta: isl.Val, i: int, x
         ) # all variables equal to s(x)
     theta = theta.add_constraint(isl.Constraint.inequality_from_aff(xi_isl - s_xi)) # xi - s(xi) <= 0 <-> s(xi) <= xi
     # Note that the constraint xi <= u_xi is already implicit in the domain size!
+    return theta
+
+def linear_generalize_variable(F: Frame, s: isl.Point, delta: isl.Val, i: int, x_i: str, u_xi: int, M: Model) -> tuple[bool, Frame]:
+    space = M.domain.space
+    F_ = Frame.from_pieces(M.ctx, M.vars, [(isl.Set.from_point(s), delta)], default_val=Fraction(1))
+    xi_isl = isl.Aff.var_on_domain(space, isl.dim_type.set, i)
+    s_xi = s.get_coordinate_val(isl.dim_type.set, i)
+    theta = theta_domain(i, xi_isl, s_xi, s, M)
 
     s_x_i_to_u_xi = s.set_coordinate_val(isl.dim_type.set, i, isl.Val(u_xi))
     Phi2_F = M.Phi(M.Phi(F))

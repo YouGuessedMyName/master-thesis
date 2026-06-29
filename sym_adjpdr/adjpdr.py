@@ -147,6 +147,8 @@ def adjointPDRdown(M: Model, do_propagate: bool, heuristics, used_heuristic, gen
 def testAdjointPDRdown(M: Model, heuristics, used_heuristic, generalizations, used_generalization, propagate_= False, generalization_=False, print_=True, assert_=True, loop_check=True):
     if not used_heuristic in heuristics:
         heuristics.append(used_heuristic)
+    if not used_generalization in generalizations:
+        generalizations.append(used_generalization)
     print("Start")
     print(M.module.expected_result)
     res, states_list, heuristics_list = adjointPDRdown(M, propagate_, heuristics, used_heuristic, generalizations, used_generalization, print_, assert_, loop_check)
