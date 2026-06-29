@@ -179,7 +179,7 @@ class Model:
             self.isl_commands_theta.append((guard, isl_branch))
 
     @staticmethod
-    def from_prism_file(ctx: isl.Context, path: str, max_prob: Fraction, set_expected_result: bool = True):
+    def from_prism_file(ctx: isl.Context, path: str, max_prob: Fraction, set_expected_result: bool = True, no_generalization_partitions: int = 1e4):
         with open(path, "r") as f:
             prism_str = f.read()
         tree = prism_parser.parse(prism_str)
@@ -188,7 +188,7 @@ class Model:
         if set_expected_result:
             module.set_expected_result(path)
         module.clear_constants()
-        return Model(ctx, module, max_prob)
+        return Model(ctx, module, max_prob, no_generalization_partitions)
     
     def Phi(self, F: Frame) -> Frame:
         # We do it slightly differently than described in the thesis for efficiency reasons.

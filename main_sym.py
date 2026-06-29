@@ -9,7 +9,8 @@ from sym_adjpdr.exponential_generalization import *
 MAX_PROB = Fraction(80,100)
 
 ctx = isl.Context()
-M = Model.from_prism_file(ctx, "prism/chain_small_lin_gen.pm", MAX_PROB, False)
+no_generalization_partitions = 3
+M = Model.from_prism_file(ctx, "prism/chain_small_lin_gen.pm", MAX_PROB, False, no_generalization_partitions)
 
 heurs = []
 used_heur = CbGen

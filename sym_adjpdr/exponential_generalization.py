@@ -1,8 +1,10 @@
 from sym_adjpdr.frames import *
+from sym_adjpdr.islpy_utils import val_to_aff
 from sym_adjpdr.model import *
 from sym_adjpdr.linear_generalization import theta_domain
 from sympy import Rational, root, simplify
 from sym_adjpdr.visualization import plot_exponential_with_pw_aff
+
 
 def limit_denominator_lower(x, max_denominator):
     """
@@ -21,7 +23,7 @@ def exponential_generalize_state(F: Frame, _G: FrameSet, M: Model, z: Frame, s: 
     z_ = Frame.ones(isl.DEFAULT_CONTEXT, F.variables)
     # print(f"Generalizing state: {s}, with delta: {delta}")
     for i, (xi, (_, u_xi)) in enumerate(F.variables.items()):
-        _, F_, _ = exponential_generalize_variable(F, s, delta, i, xi, u_xi, M)
+        _, F_, _ = exponential_generalize_variable(F, s, i, xi, u_xi, M)
         z_ = Frame.meet(z_, F_)
     return delta, z_
 
@@ -58,9 +60,48 @@ def exponential_through_3_exact(x0, h, y0, y1, y2):
 def eval_exponential(a,b,c,d,x) -> Fraction:
     return c * a**(x-d) + b
 
-# def 
+def float_interpolate(x1: int, y1: float, x2: int, y2: float) -> tuple[float, float]:
+    if x2 - x1 == 0:
+        a = 0
+    else:
+        a = (y2 - y1) / (x2 - x1)
+    b = y1 - a * x1
+    return a, b
 
-def exponential_generalize_variable(F: Frame, s: isl.Point, delta: isl.Val, i: int, x_i: str, u_xi: int, M: Model) -> tuple[bool, Frame]:
+def affine_overapproximation(a,b,c,d, x_isl, min_x,max_x, theta_set, no_pieces, space, variables: Vars) -> isl.PwAff:
+    true_no_pieces = min((max_x-min_x) // 2, no_pieces)
+    distance = math.ceil((max_x-min_x) / true_no_pieces)
+    x0 = min_x
+
+    max_y_so_far = 0
+    result = Frame.ones(isl.DEFAULT_CONTEXT, variables)
+    # Here, we assume y0 to be leftmost!
+    while x0 < max_x:
+        x1 = min(x0+distance, max_x)-1
+        print("range", x0,x1)
+
+        not_y0 = eval_exponential(a,b,c,d,x0)
+        not_y1 = eval_exponential(a,b,c,d,x1)
+
+        slope, _ = float_interpolate(x0, not_y0, x1, not_y1)
+
+        # y1 = max_y_so_far
+        y0 = -slope * (x1-x0) + max_y_so_far
+
+        slope_aff = val_to_aff(isl.Val(frac_to_isl(Fraction(slope))), space).intersect_domain(theta_set)
+        e = slope_aff * x_isl# + val_to_aff(isl.Val(frac_to_isl(Fraction(y0))), space)
+        result.pw = result.pw.union_min(e.intersect_domain(theta_set))
+
+        # TODO account for floating point inaccuracies!
+
+
+        x0 += distance
+    print(result)
+    return result
+
+def exponential_generalize_variable(F: Frame, s: isl.Point, i: int, x_i: str, u_xi: int, M: Model) -> tuple[bool, Frame]:
+    xi_isl = isl.Aff.var_on_domain(M.domain.space, isl.dim_type.set, i)
+    s_xi = s.get_coordinate_val(isl.dim_type.set, i)
     Phi_5_F = M.Phi(M.Phi(M.Phi(M.Phi(M.Phi(F)))))
     s0 = s.copy().set_coordinate_val(isl.dim_type.set, i, isl.Val(u_xi))
     s1 = s.copy().set_coordinate_val(isl.dim_type.set, i, isl.Val(u_xi-1))
@@ -82,11 +123,12 @@ def exponential_generalize_variable(F: Frame, s: isl.Point, delta: isl.Val, i: i
     fig = plot_exponential_with_pw_aff(a,b,c,d, [u_xi-2, u_xi-1, u_xi], [y2, y1, y0], xlim=(-10,u_xi), ylim=(0,1), padding=0)
     fig.savefig("exponential.png", dpi=300, bbox_inches="tight")
 
-    # The exponential is a bit fucked due to floating point approximations!
-
-
     assert eval_exponential(a,b,c,d,u_xi) == y0
     assert eval_exponential(a,b,c,d,u_xi-1) == y1
     assert eval_exponential(a,b,c,d,u_xi-2) == y2
 
+    theta = theta_domain(i, xi_isl, s_xi, s, M)
+
+    # We need to convert to float because the exact representation will become too big to handle for large input sizes!
+    F_res = affine_overapproximation(float(a),float(b),float(c),float(d), xi_isl, vtp(s_xi),u_xi, theta, M.no_generalize_partitions, M.domain.space, F.variables)
     assert False
