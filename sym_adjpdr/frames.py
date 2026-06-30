@@ -164,9 +164,9 @@ class Frame:
 
         val = self.pw.eval(point)
         if val.is_int():
-            return Fraction(val.to_python() / self.factor).limit_denominator()
+            return Fraction(val.to_python() / self.factor)
         else:
-            return (Fraction(val.to_str()) / self.factor).limit_denominator()
+            return (Fraction(val.to_str()) / self.factor)
 
     # ---------- partial order ----------
     def __le__(self, other: "Frame") -> bool:

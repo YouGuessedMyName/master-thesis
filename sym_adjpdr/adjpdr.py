@@ -88,6 +88,8 @@ def adjointPDRdown(M: Model, do_propagate: bool, heuristics, used_heuristic, gen
             print("\tZZ", ZZ)  if print_ else None
             # print("Psi", M.Psi(Gk)) if print_ else None
             if assert_:
+                print("F_k-1", F[k-1])
+                print("ZZ", ZZ)
                 assert F[k-1] not in ZZ
                 #assert M.Psi(Gk) <= ZZ TODO
                 # What about exists n, s.t. Psi^n(Gk) <= ZZ??
@@ -111,7 +113,13 @@ def adjointPDRdown(M: Model, do_propagate: bool, heuristics, used_heuristic, gen
                     heuristics_so_far[iteration][heuristic.__name__] = zh
                 if assert_:
                     assert zh in Gk
-                    assert M.Phi(Frame.meet(F[k-1], zh)) <= zh
+                    print("meet", Frame.meet(F[k-1], zh))
+                    phi_meet = M.Phi(Frame.meet(F[k-1], zh))
+                    print("Phi meet", phi_meet)
+                    print("zh", zh)
+                    le_set = phi_meet.pw.le_set(zh.pw)
+                    print("le set", le_set)
+                    assert phi_meet <= zh
             
             z_ = None
             for gen in generalizations:
