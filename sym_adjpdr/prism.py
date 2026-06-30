@@ -74,6 +74,7 @@ class Module:
         self.prop = Not(And(list(self.labels[bad_label])))
 
     def set_expected_result(self, prism_path: str, bad_label: str = "bad"):
+        print("Waring: trying to set expected result using Storm, disable this if it takes too long :)")
         prism_program = stormpy.parse_prism_program(prism_path)
         sv_model = sv.stormpy_utils.from_prism(prism_program)
         self.expected_result = sv.model_checking(sv_model, f'Pmax=? [F "{bad_label}"]').get_result_of_state(0)

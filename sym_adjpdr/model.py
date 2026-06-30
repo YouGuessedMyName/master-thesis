@@ -204,21 +204,6 @@ class Model:
             phi_F = phi_F.union_add(guarded_phi_i)
         return Frame(phi_F.intersect_domain(F.domain).coalesce(), F.domain, F.variables, F.factor)
     
-    def Theta(self, F: Frame) -> Frame:
-        theta_F = isl.PwAff.zero_on_domain(F.domain.space)
-        for phi_set, isl_branch in self.isl_commands_theta:
-            phi = to_indicator_function(phi_set, F.domain)
-            for p_ij, is_constant, u in isl_branch:
-                if is_constant:
-                    sat_phi = Frame(F.pw * phi, F.domain, F.variables).sum()
-                    theta_ij = sat_phi * u # In this case, u returns 1 on s' and 0 on all other states.
-                    theta_F = theta_F.union_add(p_ij * theta_ij)
-                else: # In this case, u is the reverted update.
-                    update_ij = p_ij * (phi.pullback_pw_multi_aff(u) * F.pw.pullback_pw_multi_aff(u))
-                    theta_F = theta_F.union_add(update_ij)
-        res = theta_F.intersect_domain(F.domain).coalesce()
-        return Frame(res, F.domain, F.variables, F.factor)
-    
     def Chi(self, F: Frame) -> Frame:
         one = self.Phi(F)
         two = self.Phi(one)
@@ -231,6 +216,22 @@ class Model:
         # print("two", two)
         # print("res", res)
         return res
+    
+    def Theta(self, F: Frame) -> Frame:
+        theta_F = isl.PwAff.zero_on_domain(F.domain.space)
+        for phi_set, isl_branch in self.isl_commands_theta:
+            phi = to_indicator_function(phi_set, F.domain)
+            for p_ij, is_constant, u in isl_branch:
+                if is_constant:
+                    sat_phi = Frame(F.pw * phi, F.domain, F.variables).sum()
+                    sat_phi_aff = isl.Aff.val_on_domain(F.domain.space, isl.Val(frac_to_isl(sat_phi)))
+                    theta_ij = sat_phi_aff * u # In this case, u returns 1 on s' and 0 on all other states.
+                    theta_F = theta_F.union_add(p_ij * theta_ij)
+                else: # In this case, u is the reverted update.
+                    update_ij = p_ij * (phi.pullback_pw_multi_aff(u) * F.pw.pullback_pw_multi_aff(u))
+                    theta_F = theta_F.union_add(update_ij)
+        res = theta_F.intersect_domain(F.domain).coalesce()
+        return Frame(res, F.domain, F.variables, F.factor)
 
     def __PsiEq(self, W: Frame, r: Fraction) -> tuple[Frame, Fraction]:
         U = (self.good_frame * W)

@@ -3,13 +3,16 @@ import matplotlib.pyplot as plt
 from sympy import symbols, N
 import islpy as isl
 
+from sym_adjpdr.frames import Frame, State
+
 
 def plot_exponential_with_pw_aff(
     a, b, c, d,
     x_points,
     y_points,
-    pw_aff=None,
-    *,
+    F: Frame = None,
+    state : isl.Point = None,
+    variable_index: int = None,
     xlim=None,
     ylim=None,
     num_points=500,
@@ -29,7 +32,7 @@ def plot_exponential_with_pw_aff(
         Piecewise affine function to plot alongside.
     """
 
-    x = symbols("x")
+    x = symbols("x", integer=True)
     expr = c * a**(x-d) + b
 
     if xlim is None:
@@ -38,13 +41,17 @@ def plot_exponential_with_pw_aff(
     else:
         xmin, xmax = xlim
 
-    xs = np.linspace(float(xmin), float(xmax), num_points)
+    xs = np.arange(int(np.ceil(xmin)), int(np.floor(xmax)) + 1, step=1)
 
     # Exponential evaluation (keeps symbolic precision until here)
-    ys_exp = np.array([
-        float(N(expr.subs(x, value)))
-        for value in xs
-    ])
+    ls = []
+    for value in xs:
+        try:
+            conv = N(expr.subs(x, value))
+            ls.append(float(conv))
+        except:
+            pass
+    ys_exp = np.array(ls)
 
     created_axes = ax is None
     if created_axes:
@@ -67,21 +74,22 @@ def plot_exponential_with_pw_aff(
     )
 
     # islpy PwAff curve
-    if pw_aff is not None:
+    if F is not None:
         pw_xs = []
         pw_ys = []
 
         for value in xs:
+            # try:
+            val = isl.Val.read_from_str(
+                F.pw.get_ctx(),
+                str(round(value))
+            )
+            point = state.copy().set_coordinate_val(isl.dim_type.set, variable_index, val)
             try:
-                point = isl.Val.read_from_str(
-                    pw_aff.get_ctx(),
-                    str(value)
-                )
+                result = F.eval(point)
 
-                result = pw_aff.eval(point)
-
-                pw_xs.append(value)
-                pw_ys.append(float(result.to_python()))
+                pw_xs.append(round(value))
+                pw_ys.append(float(result))
 
             except Exception:
                 # outside domain of the PwAff
@@ -90,7 +98,7 @@ def plot_exponential_with_pw_aff(
         ax.plot(
             pw_xs,
             pw_ys,
-            label="islpy PwAff"
+            label="Frame"
         )
 
     ax.set_xlim(xmin, xmax)

@@ -247,6 +247,7 @@ class Frame:
         pwq = isl.PwQPolynomial.from_pw_aff(self.pw).intersect_domain(self.domain)
         #res = barvinok_sum_pwqp(pwq)
         res2 = vtp(pwq.sum().as_qpolynomial().as_aff().get_constant_val())
+        # print(res2)
         #assert res == res2
         return res2
     
