@@ -158,7 +158,7 @@ def exponential_generalize_variable(F: Frame, s: isl.Point, i: int, x_i: str, u_
     # y2 -= eval_exponential(a,b,c,u_xi)
     # print(x_i, f"({u_xi-2},{y2}) ({u_xi-1},{y1}) ({u_xi},{y0})")
 
-    print(f"{c} * {a}^(x-{d}) + {b}")
+    print(f"{c} * ({a})^(x-{d}) + {b}")
 
     if a.has(nan,zoo) or b.has(nan,zoo):
         return False, Frame.ones(isl.DEFAULT_CONTEXT, F.variables), None

@@ -10,11 +10,11 @@ MAX_PROB = Fraction(99,100)
 
 ctx = isl.Context()
 no_generalization_partitions = 100
-M = Model.from_prism_file(ctx, "prism/chain_huge.pm", MAX_PROB, False, no_generalization_partitions)
+M = Model.from_prism_file(ctx, "prism/chain_debug.pm", MAX_PROB, False, no_generalization_partitions)
 # M = Model.from_prism_file(ctx, "prism/chain_small_lin_gen.pm", MAX_PROB, True, no_generalization_partitions)
 
 heurs = []
-used_heur = CbGenChi
+used_heur = CbGen
 
 gens = []
 used_gen = no_generalization

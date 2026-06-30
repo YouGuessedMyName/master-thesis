@@ -75,6 +75,8 @@ def adjointPDRdown(M: Model, do_propagate: bool, heuristics, used_heuristic, gen
             G = [ZZ]
             print("\tZZ", ZZ) if print_ else None
             if assert_:
+                if F[n-1] in ZZ:
+                    F[n-1] in ZZ
                 assert F[n-1] not in ZZ
                 assert M.prop in ZZ
         
@@ -113,12 +115,12 @@ def adjointPDRdown(M: Model, do_propagate: bool, heuristics, used_heuristic, gen
                     heuristics_so_far[iteration][heuristic.__name__] = zh
                 if assert_:
                     assert zh in Gk
-                    print("meet", Frame.meet(F[k-1], zh))
+                    # print("meet", Frame.meet(F[k-1], zh))
                     phi_meet = M.Phi(Frame.meet(F[k-1], zh))
-                    print("Phi meet", phi_meet)
-                    print("zh", zh)
+                    # print("Phi meet", phi_meet)
+                    # print("zh", zh)
                     le_set = phi_meet.pw.le_set(zh.pw)
-                    print("le set", le_set)
+                    # print("le set", le_set)
                     assert phi_meet <= zh
             
             z_ = None

@@ -312,6 +312,7 @@ class FrameSet:
             return True
         for (r, r0) in self.eqs:
             total = Frame.dot(r, F)
+            print("total", total, "r0", r0)
             if total > r0:
                 return False
         return True

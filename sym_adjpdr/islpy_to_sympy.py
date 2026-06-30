@@ -7,7 +7,8 @@ from fractions import Fraction
 def vtp(v: isl.Val) -> Fraction:
     if v.is_int():
         return Fraction(v.to_python())
-    return Fraction(v.get_num_si(), v.get_den_val().to_python())
+    num, den = str(v).split("/")
+    return Fraction(int(num), int(den))
 
 def aff_to_sympy(aff: isl.Aff, sym_vars: Iterable[sp.Symbol]) -> sp.Expr:
     expr = 0
