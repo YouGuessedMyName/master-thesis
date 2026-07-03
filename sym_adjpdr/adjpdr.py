@@ -90,8 +90,8 @@ def adjointPDRdown(M: Model, do_propagate: bool, heuristics, used_heuristic, gen
             print("\tZZ", ZZ)  if print_ else None
             # print("Psi", M.Psi(Gk)) if print_ else None
             if assert_:
-                print("F_k-1", F[k-1])
-                print("ZZ", ZZ)
+                # print("F_k-1", F[k-1])
+                # print("ZZ", ZZ)
                 assert F[k-1] not in ZZ
                 #assert M.Psi(Gk) <= ZZ TODO
                 # What about exists n, s.t. Psi^n(Gk) <= ZZ??
@@ -140,7 +140,7 @@ def adjointPDRdown(M: Model, do_propagate: bool, heuristics, used_heuristic, gen
                     print("Inducitive invariant:", inv)
                 return True, states_so_far, heuristics_so_far
             
-            if not inv in F:
+            if True: #if not inv in F:
                 if assert_:
                     assert z_g in Gk
                     assert M.Phi(Frame.meet(F[k-1], z_g)) <= z_g

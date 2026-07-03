@@ -27,28 +27,35 @@ def linear_generalize_state_binary(F: Frame, _G: FrameSet, M: Model, _z: Frame, 
                 if e_res is None:
                     e_res = e
                 else:
-                    e_res = e_res.union_max(e)
+                    e_res = e_res.union_min(e) # TODO: investigate if this shouldn't be union_max?
                 ub = mid # When succesful, we want to start searching lower.
             else:
                 lb = mid
             upper_bounds.add(ub)
             n -= 1
+        # print(e_res.eval(s))
+        # print()
     min_ub = min(upper_bounds)
     if e_res is not None:
         result_frame = Frame(e_res.union_min(Frame.ones(isl.DEFAULT_CONTEXT, F.variables).pw), F.domain, F.variables)
     else:
         result_frame = Frame.ones(isl.DEFAULT_CONTEXT, F.variables)
-    return min_ub, result_frame
+    return result_frame.eval(s), result_frame
 
 def theta_domain(i: int, xi_isl: isl.Aff, s_xi: isl.Val, s: isl.Point, M: Model):
-    theta: isl.Set = M.domain.copy().add_constraints(
-        [isl.Constraint.equality_from_aff(
+    constraints = [isl.Constraint.equality_from_aff(
                 isl.Aff.var_on_domain(M.domain.space, isl.dim_type.set, j) 
             - 
                 s.get_coordinate_val(isl.dim_type.set, j))
             for j in range(len(M.vars)) if j != i
         ]
-        ) # all variables equal to s(x)
+    theta: isl.Set = M.domain.copy().add_constraints(constraints) # all variables equal to s(x)
+    # print('M domain', M.domain)
+    # print('constraints', constraints)
+    # print('theta in progress:', theta, 'i', i)
+    # print('theta', theta)
+    # print('var', isl.Aff.var_on_domain(M.domain.space, isl.dim_type.set, i))
+    
     theta = theta.add_constraint(isl.Constraint.inequality_from_aff(xi_isl - s_xi)) # xi - s(xi) <= 0 <-> s(xi) <= xi
     # Note that the constraint xi <= u_xi is already implicit in the domain size!
     return theta
@@ -73,10 +80,14 @@ def linear_generalize_variable(F: Frame, s: isl.Point, delta: isl.Val, i: int, x
         space=space
     )
     F__ = Frame.from_pieces(M.ctx, M.vars, [(theta, e)], default_val=Fraction(1))
+    F__with_zeroes_on_theta = F__.zero_region(F.domain - theta)
+    # print("Theta", theta)
+    # print("F''", F__)
+    # print(F__with_zeroes_on_theta)
     if M.Phi(M.Phi(F)) <= F__:
         # print(f"var: {x_i}; interpolating: x1 {vtp(s_xi)}, y1 {vtp(delta)}, x2 {u_xi}, y2 {m_xi}, SUCCESS.")
         # print(f"e: {e}")
         # print(f"gen res: {F__}")
         return True, Frame.meet(F_, F__), e.intersect_domain(theta)
     # print(f"var: {x_i}; interpolating: x1 {vtp(s_xi)}, y1 {vtp(delta)}, x2 {u_xi}, y2 {m_xi}, FAIL.")
-    return False, F_, None
+    return False, Frame.ones(isl.DEFAULT_CONTEXT, F.variables), None

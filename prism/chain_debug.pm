@@ -4,7 +4,7 @@ dtmc
 
 const int N = 1000;
 
-module grid
+module chain
 
 	c : [0..N-1];
 	g : [0..1];

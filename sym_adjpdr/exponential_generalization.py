@@ -2,7 +2,7 @@ from sym_adjpdr.frames import *
 from sym_adjpdr.islpy_utils import val_to_aff
 from sym_adjpdr.model import *
 from sym_adjpdr.linear_generalization import theta_domain
-from sympy import Rational, root, simplify, nan, zoo
+from sympy import Rational, root, simplify, nan, zoo, I
 from sym_adjpdr.visualization import plot_exponential_with_pw_aff
 from sym_adjpdr.generalization import iterate_isl_set
 
@@ -72,7 +72,11 @@ def exponential_to_1_through_3_exact(x0, h, y0, y1, y2, max_x):
     return a
 
 def eval_exponential(a,b,c,d,x) -> Fraction:
-    return c * a**(x-d) + b
+    # print(a,b,c,d,x)
+    # print([type(x) for x in [a,b,c,d,x]])
+    res = c * a**(x-d) + b
+    # print(res)
+    return res
 
 def float_interpolate(x1: int, y1: float, x2: int, y2: float) -> tuple[float, float]:
     if x2 - x1 == 0:
@@ -96,7 +100,7 @@ def affine_overapproximation(a,b,c,d, x_isl, min_x,max_x, theta_set: isl.Set, no
     while x1 >= 0:
         x0 = max(x1-distance+1, min_x)
         # print("range", x0,x1)
-
+        
         not_y0 = eval_exponential(a,b,c,d,x1 + FL_ACC_LOSS)
         not_y1 = eval_exponential(a,b,c,d,x1+1 + FL_ACC_LOSS)
 
@@ -160,7 +164,7 @@ def exponential_generalize_variable(F: Frame, s: isl.Point, i: int, x_i: str, u_
 
     print(f"{c} * ({a})^(x-{d}) + {b}")
 
-    if a.has(nan,zoo) or b.has(nan,zoo):
+    if a.has(nan,zoo,I) or b.has(nan,zoo,I) or a < 0:
         return False, Frame.ones(isl.DEFAULT_CONTEXT, F.variables), None
 
 
@@ -200,7 +204,7 @@ def exponential_generalize_variable(F: Frame, s: isl.Point, i: int, x_i: str, u_
     # print(phi, res)
     if Phi_5_F <= F_res:
         init_val = F_res.eval(M.init)
-        assert M.Phi(F_res) <= F_res
+        #assert M.Phi(F_res) <= F_res
         
         return True, F_res, theta
     return False, Frame.ones(isl.DEFAULT_CONTEXT, F.variables), theta

@@ -16,7 +16,8 @@ TECHNICAL = "TECHNICAL" # Includes the factors that we abstract away from
 ABSTRACT = "ABSTRACT"
 VERBOSE = "VERBOSE"
 VECTOR = "VECTOR"
-FRAME_PRINTING = TECHNICAL
+FLOAT_VECTOR = "FLOAT_VECTOR"
+FRAME_PRINTING = FLOAT_VECTOR
 
 # ---------- Helpers ----------
 
@@ -175,6 +176,9 @@ class Frame:
         if other.is_empty:
             return self.is_empty
         return self.pw.le_set(other.pw).is_equal(self.domain)
+
+    def le_on_domain(self, other: "Frame", domain: isl.Set) -> bool:
+        return self.pw.intersect_domain(domain).le_set(other.pw).is_equal(domain)
     
     def __lt__(self, other: "Frame") -> bool:
         if self.is_empty:
@@ -237,7 +241,10 @@ class Frame:
             return pretty_print_pwaff(self.pw, "f", self.factor)
         else:
             prod = product(*[range(lb, ub+1) for _, (lb,ub) in self.variables.items()])
-            vec = ",".join([str(self.eval({var: val for var, val in zip(self.variables, vals)})) for vals in prod])
+            if FRAME_PRINTING == VECTOR:
+                vec = ",".join([str(self.eval({var: val for var, val in zip(self.variables, vals)})) for vals in prod])
+            else:
+                vec = ",".join([str(float(round(self.eval({var: val for var, val in zip(self.variables, vals)}),3))) for vals in prod])
             return "[" + vec + "]"
         
     def __sub__(self, other):
@@ -312,7 +319,6 @@ class FrameSet:
             return True
         for (r, r0) in self.eqs:
             total = Frame.dot(r, F)
-            print("total", total, "r0", r0)
             if total > r0:
                 return False
         return True
