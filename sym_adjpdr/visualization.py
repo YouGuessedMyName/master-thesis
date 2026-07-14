@@ -57,21 +57,23 @@ def plot_exponential_with_pw_aff(
     if created_axes:
         fig, ax = plt.subplots()
 
-    # Exponential curve
-    ax.plot(
-        xs,
-        ys_exp,
-        label=r"$y=c a^{(x-d)}+b$"
-    )
-
     # Original points
     ax.scatter(
         [float(v) for v in x_points],
         [float(v) for v in y_points],
         color="red",
         zorder=5,
-        label="Data points",
+        label="p0,p1,p2",
     )
+
+    # Exponential curve
+    ax.plot(
+        xs,
+        ys_exp,
+        label="e"
+    )
+
+    
 
     # islpy PwAff curve
     if F is not None:
@@ -98,7 +100,7 @@ def plot_exponential_with_pw_aff(
         ax.plot(
             pw_xs,
             pw_ys,
-            label="Frame"
+            label="a"
         )
 
     ax.set_xlim(xmin, xmax)

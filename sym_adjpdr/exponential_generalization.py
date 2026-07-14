@@ -86,7 +86,7 @@ def float_interpolate(x1: int, y1: float, x2: int, y2: float) -> tuple[float, fl
     b = y1 - a * x1
     return a, b
 
-FL_ACC_LOSS = 0.2
+FL_ACC_LOSS = 0
 
 def affine_overapproximation(a,b,c,d, x_isl, min_x,max_x, theta_set: isl.Set, no_pieces, space, variables: Vars, lowest_start) -> Frame:
     true_no_pieces = min((max_x-min_x+1)//2, no_pieces)
@@ -100,6 +100,7 @@ def affine_overapproximation(a,b,c,d, x_isl, min_x,max_x, theta_set: isl.Set, no
     while x1 >= 0:
         x0 = max(x1-distance+1, min_x)
         # print("range", x0,x1)
+
         
         not_y0 = eval_exponential(a,b,c,d,x1 + FL_ACC_LOSS)
         not_y1 = eval_exponential(a,b,c,d,x1+1 + FL_ACC_LOSS)
@@ -179,8 +180,10 @@ def exponential_generalize_variable(F: Frame, s: isl.Point, i: int, x_i: str, u_
     
     F_res = affine_overapproximation(float(a),float(b),float(c),float(d), xi_isl, vtp(s_xi),u_xi, theta, M.no_generalize_partitions, M.domain.space, F.variables, lowest_start)
     
-    # fig = plot_exponential_with_pw_aff(a,b,c,d, [u_xi-2, u_xi-1, u_xi], [y2, y1, y0], F_res, s, i, xlim=(0,u_xi), ylim=(0,1), padding=0)
-    # fig.savefig("exponential.png", dpi=300, bbox_inches="tight")
+    e = Frame(F_res.pw.intersect_domain(theta), F.domain, F.variables)
+
+    fig = plot_exponential_with_pw_aff(a,b,c,d, [u_xi-2, u_xi-1, u_xi], [y2, y1, y0], e, s, i, xlim=(0,u_xi), ylim=(0,1), padding=0)
+    fig.savefig("exponential.png", dpi=300, bbox_inches="tight")
     # print([float(F_res.eval({"c": c, "g": 0})) for c in range(u_xi+1)])
     
     # F_res_restricted = F_res.copy()
