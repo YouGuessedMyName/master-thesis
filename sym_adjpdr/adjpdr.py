@@ -56,7 +56,7 @@ def adjointPDRdown(M: Model, do_propagate: bool, heuristics, used_heuristic, gen
                 return True, states_so_far, heuristics_so_far
         # NEGATIVELY CONCLUSIVE
         if len(G) != 0 and G[0].is_empty():
-            print(f"After {iteration-1} iterations")
+            print(f"After {iteration-1} iterations") if print_ else None
             return False, states_so_far, heuristics_so_far
         # if Gk is not None:
         #     print("second", Phi(F[k-1], M) in Gk)

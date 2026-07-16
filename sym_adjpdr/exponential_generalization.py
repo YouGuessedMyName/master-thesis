@@ -163,7 +163,7 @@ def exponential_generalize_variable(F: Frame, s: isl.Point, i: int, x_i: str, u_
     # y2 -= eval_exponential(a,b,c,u_xi)
     # print(x_i, f"({u_xi-2},{y2}) ({u_xi-1},{y1}) ({u_xi},{y0})")
 
-    print(f"{c} * ({a})^(x-{d}) + {b}")
+    # print(f"{c} * ({a})^(x-{d}) + {b}")
 
     if a.has(nan,zoo,I) or b.has(nan,zoo,I) or a < 0:
         return False, Frame.ones(isl.DEFAULT_CONTEXT, F.variables), None
@@ -182,8 +182,8 @@ def exponential_generalize_variable(F: Frame, s: isl.Point, i: int, x_i: str, u_
     
     e = Frame(F_res.pw.intersect_domain(theta), F.domain, F.variables)
 
-    fig = plot_exponential_with_pw_aff(a,b,c,d, [u_xi-2, u_xi-1, u_xi], [y2, y1, y0], e, s, i, xlim=(0,u_xi), ylim=(0,1), padding=0)
-    fig.savefig("exponential.png", dpi=300, bbox_inches="tight")
+    # fig = plot_exponential_with_pw_aff(a,b,c,d, [u_xi-2, u_xi-1, u_xi], [y2, y1, y0], e, s, i, xlim=(0,u_xi), ylim=(0,1), padding=0)
+    # fig.savefig("exponential.png", dpi=300, bbox_inches="tight")
     # print([float(F_res.eval({"c": c, "g": 0})) for c in range(u_xi+1)])
     
     # F_res_restricted = F_res.copy()

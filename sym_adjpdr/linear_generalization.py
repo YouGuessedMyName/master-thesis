@@ -9,7 +9,7 @@ def linear_generalize_state_conflict(F: Frame, _G: FrameSet, M: Model, z: Frame,
     for i, (xi, (_, u_xi)) in enumerate(F.variables.items()):
         _, F_, _ = linear_generalize_variable(F, s, delta, i, xi, u_xi, M)
         z_ = Frame.meet(z_, F_)
-    return delta, z_
+    return z_.pw.eval(s), z_
 
 N = 5
 
