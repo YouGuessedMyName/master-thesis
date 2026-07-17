@@ -120,7 +120,7 @@ def exponential_generalize_variable(F: Frame, s: isl.Point, i: int, x_i: str, u_
     return False, Frame.ones(isl.DEFAULT_CONTEXT, F.variables)
 
 
-def exponential_generalize_state(F: Frame, s: isl.Point, M: Model) -> tuple[Fraction, Frame]:
+def exponential_generalization(F: Frame, s: isl.Point, M: Model) -> tuple[Fraction, Frame]:
     z = Frame.ones(isl.DEFAULT_CONTEXT, F.variables)
     # print(f"Generalizing state: {s}, with delta: {delta}")
     for i, (xi, (_, u_xi)) in enumerate(F.variables.items()):

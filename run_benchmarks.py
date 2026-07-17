@@ -20,7 +20,7 @@ TRACE = False
 # [Cs, Cb]  [Cs, CbGen, CmGen]
 HEURISTICS = [Cs, CbGen]
 # [no_generalization, linear_generalize_state_conflict, linear_generalize_state_binary, exponential_generalize_state]
-GENERALIZATIONS = [None, linear_generalization, linear_generalize_state_binary, exponential_generalize_state]
+GENERALIZATIONS = [None, linear_generalization, binary_generalization, exponential_generalization]
 
 MIN_ITERATION = int(sys.argv[1])
 iteration = 0
@@ -28,7 +28,10 @@ BENCHMARK_FOLDER = Path("benchmarks")
 
 def run_benchmark(M: Model, do_propagate: bool, heuristics, used_heuristic, generalizations, used_generalization, 
                    print_ : bool = True, assert_: bool = True, loop_check: bool = True):
-    result = adjointPDRdown(M,do_propagate,heuristics,used_heuristic, generalizations, used_generalization, print_, assert_, loop_check)
+    try:
+        result = adjointPDRdown(M,do_propagate,heuristics,used_heuristic, generalizations, used_generalization, print_, assert_, loop_check)
+    except:
+        print("CRASHED", end=" ")
     print(result[0], end=" ")
     # Long-running work
     # time.sleep(3)

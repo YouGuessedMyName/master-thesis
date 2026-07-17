@@ -15,7 +15,7 @@ def linear_generalization(F: Frame, s: isl.Point, M: Model) -> tuple[Fraction, F
 
 N = 5
 
-def linear_generalize_state_binary(F: Frame, s: isl.Point, M: Model) -> tuple[Fraction, Frame]:
+def binary_generalization(F: Frame, s: isl.Point, M: Model) -> tuple[Fraction, Frame]:
     for i, (xi, (_, u_xi)) in enumerate(F.variables.items()):
         lb = Fraction(0)
         ub = Fraction(1)
