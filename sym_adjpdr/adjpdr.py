@@ -3,6 +3,7 @@ from sym_adjpdr.model import *
 from sym_adjpdr.heuristics import *
 from sym_adjpdr.generalization import *
 from sym_adjpdr.linear_generalization import *
+import sym_adjpdr.linear_generalization
 
 def print_progress(iteration, F, G, k, n, M):
     print(f"\n{iteration}")
@@ -101,58 +102,38 @@ def adjointPDRdown(M: Model, do_propagate: bool, heuristics, used_heuristic, gen
         # CONFLICT
         elif len(G) > 0 and M.Phi(F[k-1]) in Gk:
             print(f"\tPhi(F_k-1) {M.Phi(F[k-1])} IN Gk {Gk} ==> conflict") if print_ else None
-            # print("PHI: ", Phi(F[k-1]))
-            # print('Gk: ', Gk)
-            z = None
             if loop_check:
                 heuristics_so_far[iteration] = {}
-            for heuristic in heuristics:
-                zh = heuristic(F[k-1], Gk, M)
-                if heuristic == used_heuristic:
-                    z = zh
-                print("\t" + heuristic.__name__, zh) if print_ else None
-                if loop_check:
-                    heuristics_so_far[iteration][heuristic.__name__] = zh
-                if assert_:
-                    assert zh in Gk
-                    # print("meet", Frame.meet(F[k-1], zh))
-                    phi_meet = M.Phi(Frame.meet(F[k-1], zh))
-                    # print("Phi meet", phi_meet)
-                    # print("zh", zh)
-                    le_set = phi_meet.pw.le_set(zh.pw)
-                    # print("le set", le_set)
-                    assert phi_meet <= zh
+
+            z = used_heuristic(F[k-1], Gk, M)
             
-            z_ = None
-            for gen in generalizations:
-                if gen in [Phi_generalization, no_generalization]:
-                    z_g = gen(F[k-1], Gk, z, M)
-                else:
-                    z_g = generalization_framework(F[k-1], Gk, z, M, gen)
-                if gen == used_generalization:
-                    z_ = z_g
-            inv = Frame.meet(F[k], z_)
-            print("\tz_: ", z_) if print_ else None
-            print("\tinv: ", inv) if print_ else None
-            if inv <= M.prop and M.Phi(inv) <= inv:
-                if print_:
-                    print(f"After {iteration-1} iterations")
-                    print("Inducitive invariant:", inv)
+            if used_generalization is not None:
+                sym_adjpdr.linear_generalization.oracle = z # I am aware that this is horendous, but I really want cashing, okay?
+                z = generalize(F[k-1],Gk,M,used_generalization,used_heuristic)
+            
+            potential_invariant = Frame.meet(F[k], z)
+            print("\tpotential inv: ", potential_invariant) if print_ else None
+            if M.Phi(potential_invariant) <= potential_invariant and potential_invariant <= M.prop:
                 return True, states_so_far, heuristics_so_far
             
-            if True: #if not inv in F:
-                if assert_:
-                    assert z_g in Gk
-                    assert M.Phi(Frame.meet(F[k-1], z_g)) <= z_g
-                F = [Frame.meet(Fj, z_) for (j, Fj) in enumerate(F) if j <= k] + [F[j] for j in range(k+1, n)]
-            else: # Fallback
-                print("Fallback") if print_ else None
-                F = [Frame.meet(Fj, z) for (j, Fj) in enumerate(F) if j <= k] + [F[j] for j in range(k+1, n)]
-            
-            if do_propagate:
-                F_meet_conjuncts = [Fj_conjuncts + [z] for (j, Fj_conjuncts) in enumerate(F_meet_conjuncts) if j <= k] \
-                                + [F_meet_conjuncts[j] for j in range(k+1, n)]
+            if print_:
+                for heuristic in heuristics:
+                    zh = heuristic(F[k-1], Gk, M)
+                    print("\t" + heuristic.__name__, zh)
+                    if loop_check:
+                        heuristics_so_far[iteration][heuristic.__name__] = zh
+                    if assert_:
+                        assert zh in Gk
+                        assert M.Phi(Frame.meet(F[k-1], zh)) <= zh
+                
+                for gen in generalizations:
+                    zg = generalize(F[k-1], Gk, M, gen, used_heuristic)
+                    print("\t" + gen.__name__, zg)
+               
+            # Update the configuration.
+            F = [Frame.meet(Fj, z) for (j, Fj) in enumerate(F) if j <= k] + [F[j] for j in range(k+1, n)]
             G.pop(0)
+            
 
 def testAdjointPDRdown(M: Model, heuristics, used_heuristic, generalizations, used_generalization, propagate_= False, generalization_=False, print_=True, assert_=True, loop_check=True):
     if not used_heuristic in heuristics:

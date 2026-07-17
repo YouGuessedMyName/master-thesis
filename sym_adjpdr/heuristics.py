@@ -69,8 +69,8 @@ def compute_meet(min: Frame, w: Frame, r_: Fraction, coeffs: list[isl.Point], s:
     else:
         s_ = coeffs.pop()
         # Debug
-        min_s_ = min.eval(s_)
-        w_s_ = w.eval(s_)
+        # min_s_ = min.eval(s_)
+        # w_s_ = w.eval(s_)
         
         
         if min.eval(s_) == 0:

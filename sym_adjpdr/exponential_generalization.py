@@ -4,44 +4,6 @@ from sym_adjpdr.model import *
 from sym_adjpdr.linear_generalization import theta_domain
 from sympy import Rational, root, simplify, nan, zoo, I
 from sym_adjpdr.visualization import plot_exponential_with_pw_aff
-from sym_adjpdr.generalization import iterate_isl_set
-
-
-def limit_denominator_lower(x, max_denominator):
-    """
-    Largest fraction <= x with denominator <= max_denominator.
-    """
-    f = Fraction(x).limit_denominator(max_denominator)
-
-    if f <= x:
-        return f
-
-    # Move one step down in the Farey sense
-    return Fraction(f.numerator - 1, f.denominator).limit_denominator(max_denominator)
-
-def exponential_generalize_state(F: Frame, _G: FrameSet, M: Model, z: Frame, s: isl.Point) -> tuple[Fraction, Frame]:
-    z_ = Frame.ones(isl.DEFAULT_CONTEXT, F.variables)
-    # print(f"Generalizing state: {s}, with delta: {delta}")
-    for i, (xi, (_, u_xi)) in enumerate(F.variables.items()):
-        _, F_, _ = exponential_generalize_variable(F, s, i, xi, u_xi, M)
-        z_ = Frame.meet(z_, F_)
-    delta = z_.eval(s)
-    return z_.eval(s), z_
-
-def exponential_through_3(x0, h, y0, y1, y2):
-    y0 = float(y0)
-    y1 = float(y1)
-    y2 = float(y2)
-    # y_i may be Rational objects
-
-    b = (y0*y2 - y1**2) / (y0 + y2 - 2*y1)
-
-    ah = (y2 - b) / (y1 - b)
-    a = root(ah, h)          # exact h-th root if possible
-
-    c = simplify((y0 - b) / a**x0)
-
-    return a, b, c
 
 def exponential_through_3_exact(x0, h, y0, y1, y2):
     y0 = Rational(y0)
@@ -58,33 +20,9 @@ def exponential_through_3_exact(x0, h, y0, y1, y2):
 
     return a, b, c
 
-def exponential_to_1_through_3_exact(x0, h, y0, y1, y2, max_x):
-    y0 = Rational(y0)
-    y1 = Rational(y1)
-    y2 = Rational(y2)
-
-    ah = ((1 - y0) / (1 - y1)).simplify()
-    a = ah**(Rational(1, h))
-
-    if ((1 - y2) - a**(max_x - (x0 + 2*h))).simplify() != 0:
-        raise ValueError("Points do not fit 1 - a^(Z-x) exactly")
-
-    return a
-
 def eval_exponential(a,b,c,d,x) -> Fraction:
-    # print(a,b,c,d,x)
-    # print([type(x) for x in [a,b,c,d,x]])
     res = c * a**(x-d) + b
-    # print(res)
     return res
-
-def float_interpolate(x1: int, y1: float, x2: int, y2: float) -> tuple[float, float]:
-    if x2 - x1 == 0:
-        a = 0
-    else:
-        a = (y2 - y1) / (x2 - x1)
-    b = y1 - a * x1
-    return a, b
 
 FL_ACC_LOSS = 0
 
@@ -138,35 +76,27 @@ def affine_overapproximation(a,b,c,d, x_isl, min_x,max_x, theta_set: isl.Set, no
     # print(result)
     return result
 
+FIGURE = False
+
 def exponential_generalize_variable(F: Frame, s: isl.Point, i: int, x_i: str, u_xi: int, M: Model) -> tuple[bool, Frame]:
     xi_isl = isl.Aff.var_on_domain(M.domain.space, isl.dim_type.set, i)
     s_xi = s.get_coordinate_val(isl.dim_type.set, i)
-    Phi_5_F = M.Phi(M.Phi(M.Phi(M.Phi(M.Phi(F)))))
-    if s_xi == u_xi:
-        return False, Frame.ones(isl.DEFAULT_CONTEXT, F.variables), None
-    if u_xi-2 < 0:
-        return False, Frame.ones(isl.DEFAULT_CONTEXT, F.variables), None
+    Phi_4_F = M.Phi(M.Phi(M.Phi(M.Phi(F))))
+    if s_xi == u_xi or u_xi-2 < 0:
+        return False, Frame.ones(isl.DEFAULT_CONTEXT, F.variables)
+    
     s0 = s.copy().set_coordinate_val(isl.dim_type.set, i, isl.Val(u_xi))
     s1 = s.copy().set_coordinate_val(isl.dim_type.set, i, isl.Val(u_xi-1))
     s2 = s.copy().set_coordinate_val(isl.dim_type.set, i, isl.Val(u_xi-2))
-    y0 = Phi_5_F.eval(s0)
-    y1 = Phi_5_F.eval(s1)
-    y2 = Phi_5_F.eval(s2)
+    y0 = Phi_4_F.eval(s0)
+    y1 = Phi_4_F.eval(s1)
+    y2 = Phi_4_F.eval(s2)
 
-    # y = c * a^x + b
     a,b,c = exponential_through_3_exact(-2, 1, y2, y1, y0)
     d = u_xi
-    # Now correct the b...
-    # b -= limit_denominator_lower(eval_exponential(a,b,c,u_xi), 1e5)
-    # y0 -= eval_exponential(a,b,c,u_xi)
-    # y1 -= eval_exponential(a,b,c,u_xi)
-    # y2 -= eval_exponential(a,b,c,u_xi)
-    # print(x_i, f"({u_xi-2},{y2}) ({u_xi-1},{y1}) ({u_xi},{y0})")
 
-    # print(f"{c} * ({a})^(x-{d}) + {b}")
-
-    if a.has(nan,zoo,I) or b.has(nan,zoo,I) or a < 0:
-        return False, Frame.ones(isl.DEFAULT_CONTEXT, F.variables), None
+    if a.has(nan,zoo,I) or b.has(nan,zoo,I) or a < 0: # success?
+        return False, Frame.ones(isl.DEFAULT_CONTEXT, F.variables)
 
 
     # assert eval_exponential(a,b,c,d,u_xi) == y0
@@ -176,38 +106,24 @@ def exponential_generalize_variable(F: Frame, s: isl.Point, i: int, x_i: str, u_
     theta = theta_domain(i, xi_isl, s_xi, s, M)
 
     # We need to convert to float because the exact representation will become too big to handle for large input sizes!
-    lowest_start = min(y0, Phi_5_F.eval(s0)) + Fraction(1,10000)
+    lowest_start = min(y0, Phi_4_F.eval(s0)) + Fraction(1,10000)
     
-    F_res = affine_overapproximation(float(a),float(b),float(c),float(d), xi_isl, vtp(s_xi),u_xi, theta, M.no_generalize_partitions, M.domain.space, F.variables, lowest_start)
-    
-    e = Frame(F_res.pw.intersect_domain(theta), F.domain, F.variables)
+    z_ = affine_overapproximation(float(a),float(b),float(c),float(d), xi_isl, vtp(s_xi),u_xi, theta, M.no_generalize_partitions, M.domain.space, F.variables, lowest_start)
 
-    # fig = plot_exponential_with_pw_aff(a,b,c,d, [u_xi-2, u_xi-1, u_xi], [y2, y1, y0], e, s, i, xlim=(0,u_xi), ylim=(0,1), padding=0)
-    # fig.savefig("exponential.png", dpi=300, bbox_inches="tight")
-    # print([float(F_res.eval({"c": c, "g": 0})) for c in range(u_xi+1)])
-    
-    # F_res_restricted = F_res.copy()
-    # F_res_restricted.pw = F_res_restricted.pw.intersect_domain(theta)
+    if FIGURE:
+        e = Frame(z_.pw.intersect_domain(theta), F.domain, F.variables)
+        fig = plot_exponential_with_pw_aff(a,b,c,d, [u_xi-2, u_xi-1, u_xi], [y2, y1, y0], e, s, i, xlim=(0,u_xi), ylim=(0,1), padding=0)
+        fig.savefig("exponential.png", dpi=300, bbox_inches="tight")
 
-    # Phi_5_F_restricted = Phi_5_F.copy()
-    # Phi_5_F_restricted.pw = Phi_5_F_restricted.pw.intersect_domain(theta)
+    if Phi_4_F <= z_:
+        return True, z_
+    return False, Frame.ones(isl.DEFAULT_CONTEXT, F.variables)
 
-    # print("F", F_res)
-    # print("Phi", Phi_5_F)
-    # le_set = Phi_5_F.pw.le_set(F_res.pw)
-    # gt_set = F_res.pw.gt_set(Phi_5_F.pw)
-    # for p in iterate_isl_set(le_set):
-    #     print(p)
-    
-    # for p in iterate_isl_set(gt_set):
-    #     print("gt", p)
 
-    # phi = Phi_5_F.eval({"c": 9, "g": 0})
-    # res = F_res.eval({"c": 9, "g": 0})
-    # print(phi, res)
-    if Phi_5_F <= F_res:
-        init_val = F_res.eval(M.init)
-        #assert M.Phi(F_res) <= F_res
-        
-        return True, F_res, theta
-    return False, Frame.ones(isl.DEFAULT_CONTEXT, F.variables), theta
+def exponential_generalize_state(F: Frame, s: isl.Point, M: Model) -> tuple[Fraction, Frame]:
+    z = Frame.ones(isl.DEFAULT_CONTEXT, F.variables)
+    # print(f"Generalizing state: {s}, with delta: {delta}")
+    for i, (xi, (_, u_xi)) in enumerate(F.variables.items()):
+        _, z_ = exponential_generalize_variable(F, s, i, xi, u_xi, M)
+        z = Frame.meet(z, z_)
+    return z.eval(s), z

@@ -20,7 +20,7 @@ TRACE = False
 # [Cs, Cb]  [Cs, CbGen, CmGen]
 HEURISTICS = [Cs, CbGen]
 # [no_generalization, linear_generalize_state_conflict, linear_generalize_state_binary, exponential_generalize_state]
-GENERALIZATIONS = [no_generalization, linear_generalize_state_conflict, linear_generalize_state_binary, exponential_generalize_state]
+GENERALIZATIONS = [None, linear_generalization, linear_generalize_state_binary, exponential_generalize_state]
 
 MIN_ITERATION = int(sys.argv[1])
 iteration = 0
@@ -32,6 +32,9 @@ def run_benchmark(M: Model, do_propagate: bool, heuristics, used_heuristic, gene
     print(result[0], end=" ")
     # Long-running work
     # time.sleep(3)
+
+def hname(gen: Callable | None) -> str:
+    return "None" if gen is None else gen.__name__
 
 for file in sorted(BENCHMARK_FOLDER.iterdir()):
     if file.is_file():
@@ -45,7 +48,7 @@ for file in sorted(BENCHMARK_FOLDER.iterdir()):
                         continue
 
                     if TRACE:
-                        print("**NOW RUNNING**", str(file), float(max_prob), heur.__name__, gen.__name__, "...")
+                        print("**NOW RUNNING**", str(file), float(max_prob), hname(heur), hname(gen), "...")
                     
                     p = Process(target=run_benchmark, args=(model, False,[heur], heur, [gen], gen, DEBUG, DEBUG, DEBUG))
                     start = time.perf_counter()
@@ -54,10 +57,10 @@ for file in sorted(BENCHMARK_FOLDER.iterdir()):
                     if p.is_alive():
                         p.terminate()
                         p.join()
-                        print(iteration, str(file), float(max_prob), heur.__name__, gen.__name__, "T/O")
+                        print(iteration, str(file), float(max_prob),hname(heur), hname(gen), "T/O")
                     else:
                         elapsed = time.perf_counter() - start
-                        print(iteration, str(file), float(max_prob), heur.__name__, gen.__name__, f"{elapsed:.3f}")
+                        print(iteration, str(file), float(max_prob), hname(heur), hname(gen), f"{elapsed:.3f}")
                     iteration += 1
                     
 
