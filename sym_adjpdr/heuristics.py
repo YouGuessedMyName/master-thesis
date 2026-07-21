@@ -6,7 +6,10 @@ import z3
 def Ca(M: Model) -> FrameSet:
     F = Frame.zeroes(M.ctx, M.vars)
     F[M.init] = 1
-    return FrameSet([(F,M.max_prob)], M.vars)
+    G = FrameSet([(F,M.max_prob)], M.vars)
+    # print(F)
+    # print(G)
+    return G
 
 def De(_F: Frame, G: FrameSet, M: Model, _print_policiy: bool = False) -> FrameSet:
     return M.Psi(G)

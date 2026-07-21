@@ -76,8 +76,8 @@ def join_maps_with_priority(map1: isl.Map, map2: isl.Map) -> isl.Map:
 def to_indicator_function(s: isl.Set, domain: isl.Set, constant_val: int = 1) -> isl.PwAff:
     restricted_one = isl.PwAff.val_on_domain(s, isl.Val(constant_val))
     zeroes = isl.PwAff.zero_on_domain(s.space)
-    res = zeroes.union_add(restricted_one).intersect_domain(domain)
-    return res
+    res = restricted_one.union_add(zeroes).intersect_domain(domain)
+    return res.coalesce()
 
 class Model:
     # For now support only DTMC
@@ -99,13 +99,13 @@ class Model:
     bad_frame: Frame
     ctx: isl.Context
     max_prob: Fraction
-    init: dict[str, Fraction]
+    init: dict[str, int]
     good: isl.Set
     good_frame: Frame
     no_generalize_partitions: int = 1e4
 
     def __init__(self, ctx: isl.Context, module: Module, max_prob: Fraction, no_generalize_partitions: int = 1e4, initial_state: dict[str, Fraction] | None = None):
-        self.init = {v: lb for v, (lb, _ub) in module.variables.items()}
+        self.init = initial_state
         self.max_prob = max_prob
         self.ctx = ctx
         self.vars = module.variables
@@ -188,20 +188,28 @@ class Model:
         if set_expected_result:
             module.set_expected_result(path)
         module.clear_constants()
-        return Model(ctx, module, max_prob, no_generalization_partitions)
+        return Model(ctx, module, max_prob, no_generalization_partitions, module.init)
     
     def Phi(self, F: Frame) -> Frame:
+        print("Phi")
+        print("space", F.pw.domain().get_space())
         # We do it slightly differently than described in the thesis for efficiency reasons.
         # We first take the sum of all updates that belong to phi, and only then intersect it with phi!
         phi_F = to_indicator_function(self.bad, F.domain)
+        # print("phi_F", phi_F)
         for phi_set, isl_branch in self.isl_commands_phi:
             phi_i = isl.PwAff.zero_on_domain(F.domain.space)
             for p_ij, u in isl_branch:
                 phi_ij = p_ij * F.pw.pullback_pw_multi_aff(u)
+                print("u", u)
                 phi_i = phi_i.union_add(phi_ij)
+            phi_i = phi_i.coalesce()
             
-            guarded_phi_i = phi_i.intersect_domain(phi_set)
-            phi_F = phi_F.union_add(guarded_phi_i)
+            guarded_phi_i = phi_i.intersect_domain(phi_set).coalesce()
+            print("guarded phi_i", guarded_phi_i)
+            # print("guarded", guarded_phi_i)
+            phi_F = phi_F.union_add(guarded_phi_i).coalesce()
+        # print('PHI F', phi_F)
         return Frame(phi_F.intersect_domain(F.domain).coalesce(), F.domain, F.variables, F.factor)
     
     def Chi(self, F: Frame) -> Frame:

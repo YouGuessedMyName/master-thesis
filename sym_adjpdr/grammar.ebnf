@@ -6,7 +6,8 @@ constant: "const" "int" NAME "=" INT ";"
 module: "module" NAME vars commands "endmodule"
 
 vars: var*
-var: NAME ":" "[" expr ".." expr "]" ";"
+var: NAME ":" "[" expr ".." expr "]" ";" 
+     | NAME ":" "[" expr ".." expr "]" "init" expr ";"
 
 commands: command*
 command: "[]" guards "->" branches ";"

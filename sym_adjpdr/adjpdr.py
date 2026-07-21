@@ -106,12 +106,14 @@ def adjointPDRdown(M: Model, do_propagate: bool, heuristics, used_heuristic, gen
                 heuristics_so_far[iteration] = {}
 
             z = used_heuristic(F[k-1], Gk, M)
+            print("z", len([x for x in z.pw.get_pieces()]))
             
             if used_generalization is not None:
                 sym_adjpdr.linear_generalization.oracle = z # I am aware that this is horendous, but I really want cashing, okay?
                 z = generalize(F[k-1],Gk,M,used_generalization,used_heuristic)
             
             potential_invariant = Frame.meet(F[k], z)
+            print("inv", len([x for x in potential_invariant.pw.get_pieces()]))
             print("\tpotential inv: ", potential_invariant) if print_ else None
             if M.Phi(potential_invariant) <= potential_invariant and potential_invariant <= M.prop:
                 return True, states_so_far, heuristics_so_far
@@ -127,8 +129,9 @@ def adjointPDRdown(M: Model, do_propagate: bool, heuristics, used_heuristic, gen
                         assert M.Phi(Frame.meet(F[k-1], zh)) <= zh
                 
                 for gen in generalizations:
-                    zg = generalize(F[k-1], Gk, M, gen, used_heuristic)
-                    print("\t" + gen.__name__, zg)
+                    if gen is not None:
+                        zg = generalize(F[k-1], Gk, M, gen, used_heuristic)
+                        print("\t" + gen.__name__, zg)
                
             # Update the configuration.
             F = [Frame.meet(Fj, z) for (j, Fj) in enumerate(F) if j <= k] + [F[j] for j in range(k+1, n)]
@@ -140,6 +143,7 @@ def testAdjointPDRdown(M: Model, heuristics, used_heuristic, generalizations, us
         heuristics.append(used_heuristic)
     if not used_generalization in generalizations:
         generalizations.append(used_generalization)
+    print("Initial state:", M.init)
     print("Start")
     print(M.module.expected_result)
     res, states_list, heuristics_list = adjointPDRdown(M, propagate_, heuristics, used_heuristic, generalizations, used_generalization, print_, assert_, loop_check)

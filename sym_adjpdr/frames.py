@@ -149,6 +149,25 @@ class Frame:
     @staticmethod
     def empty(ctx: isl.Context, variables: Vars):
         return Frame(None, make_domain(ctx, variables), variables, 1, True)
+    
+    def better_coalesce(self) -> "Frame":
+        """Coalesce all the sets that make up the pwaff and have the same value. Unfortunately islpy does not do this by default :(."""
+        values = {}
+        for sset, aff in self.pw.get_pieces():
+            try:
+                val = aff.get_constant_val()
+            except:
+                return
+            if val not in values:
+                values[val] = sset
+            else:
+                values[val] = values[val].union_add(sset).coalesce()
+        print(values)
+        F = Frame.from_pieces(isl.DEFAULT_CONTEXT, self.variables, [(sset, val) for val,sset in values.items()])
+        print("F\t", F)
+        print()
+        return F
+
 
     # ---------- evaluation ----------
     def eval(self, s: State | isl.Point) -> Fraction:

@@ -36,6 +36,7 @@ class Module:
     prop: Expr
     lcm: int
     expected_result: float
+    init: dict[str,int]
 
     def clear_constants(self):
         """Replace constants in variables, guards, branches, labels, and property."""
@@ -69,6 +70,9 @@ class Module:
             # Update property
             if self.prop is not None:
                 self.prop = self.prop.substitute(cname, const_expr).eval()
+            # Initial state
+            if self.init is not None:
+                self.init = {var: int(val.substitute(cname, const_expr).eval().value) for var, val in self.init.items()}
 
     def set_property(self, bad_label: str = "bad"):
         self.prop = Not(And(list(self.labels[bad_label])))
@@ -112,6 +116,7 @@ class Module:
 # === Transformer ===
 class PrismTransformer(Transformer):
     denominators: list[int] = []
+    inits: dict[str, int] = {}
 
     def start(self, items):
         _model_type, constants, module, labels = items
@@ -130,13 +135,18 @@ class PrismTransformer(Transformer):
     # Module
     def module(self, items):
         name, vars, commands = items
-        return Module(name, None, vars, commands, None, None, 0, None)
+        return Module(name, None, vars, commands, None, None, 0, None, self.inits)
 
     def vars(self, items):
         return {k: v for k, v in items}
 
     def var(self, items):
-        name, lb, ub = items
+        if len(items) == 3: # When no init is set, we assume 0.
+            name, lb, ub = items
+            self.inits[name] = Const(Fraction(0,1))
+        else:
+            name, lb, ub, init = items
+            self.inits[name] = init
         return name, (lb, ub)
 
     def commands(self, items):
