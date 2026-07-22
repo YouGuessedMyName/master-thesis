@@ -106,14 +106,12 @@ def adjointPDRdown(M: Model, do_propagate: bool, heuristics, used_heuristic, gen
                 heuristics_so_far[iteration] = {}
 
             z = used_heuristic(F[k-1], Gk, M)
-            print("z", len([x for x in z.pw.get_pieces()]))
             
             if used_generalization is not None:
                 sym_adjpdr.linear_generalization.oracle = z # I am aware that this is horendous, but I really want cashing, okay?
                 z = generalize(F[k-1],Gk,M,used_generalization,used_heuristic)
             
             potential_invariant = Frame.meet(F[k], z)
-            print("inv", len([x for x in potential_invariant.pw.get_pieces()]))
             print("\tpotential inv: ", potential_invariant) if print_ else None
             if M.Phi(potential_invariant) <= potential_invariant and potential_invariant <= M.prop:
                 return True, states_so_far, heuristics_so_far

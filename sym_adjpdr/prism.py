@@ -72,7 +72,10 @@ class Module:
                 self.prop = self.prop.substitute(cname, const_expr).eval()
             # Initial state
             if self.init is not None:
-                self.init = {var: int(val.substitute(cname, const_expr).eval().value) for var, val in self.init.items()}
+                try:
+                    self.init = {var: int(val.substitute(cname, const_expr).eval().value) for var, val in self.init.items()}
+                except:
+                    pass
 
     def set_property(self, bad_label: str = "bad"):
         self.prop = Not(And(list(self.labels[bad_label])))

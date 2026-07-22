@@ -179,20 +179,20 @@ class Model:
             self.isl_commands_theta.append((guard, isl_branch))
 
     @staticmethod
-    def from_prism_file(ctx: isl.Context, path: str, max_prob: Fraction, set_expected_result: bool = True, no_generalization_partitions: int = 1e4):
+    def from_prism_file(ctx: isl.Context, path: str, max_prob: Fraction, set_expected_result: bool = True, no_generalization_partitions: int = 1e4, bad_label: str = "bad"):
         with open(path, "r") as f:
             prism_str = f.read()
         tree = prism_parser.parse(prism_str)
         module: Module = PrismTransformer().transform(tree)
-        module.set_property()
+        module.set_property(bad_label=bad_label)
         if set_expected_result:
             module.set_expected_result(path)
         module.clear_constants()
         return Model(ctx, module, max_prob, no_generalization_partitions, module.init)
     
     def Phi(self, F: Frame) -> Frame:
-        print("Phi")
-        print("space", F.pw.domain().get_space())
+        # print("Phi")
+        # print("space", F.pw.domain().get_space())
         # We do it slightly differently than described in the thesis for efficiency reasons.
         # We first take the sum of all updates that belong to phi, and only then intersect it with phi!
         phi_F = to_indicator_function(self.bad, F.domain)
@@ -201,12 +201,12 @@ class Model:
             phi_i = isl.PwAff.zero_on_domain(F.domain.space)
             for p_ij, u in isl_branch:
                 phi_ij = p_ij * F.pw.pullback_pw_multi_aff(u)
-                print("u", u)
+                # print("u", u)
                 phi_i = phi_i.union_add(phi_ij)
             phi_i = phi_i.coalesce()
             
             guarded_phi_i = phi_i.intersect_domain(phi_set).coalesce()
-            print("guarded phi_i", guarded_phi_i)
+            # print("guarded phi_i", guarded_phi_i)
             # print("guarded", guarded_phi_i)
             phi_F = phi_F.union_add(guarded_phi_i).coalesce()
         # print('PHI F', phi_F)

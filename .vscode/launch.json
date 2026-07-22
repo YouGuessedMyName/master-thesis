@@ -10,6 +10,13 @@
             "request": "launch",
             "program": "main_sym.py",
             "console": "integratedTerminal"
+        },
+                {
+            "name": "Python Debugger: run_benchmarks",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "run_benchmarks.py",
+            "console": "integratedTerminal"
         }
     ]
 }

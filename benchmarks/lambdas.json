@@ -1,0 +1,18 @@
+{
+    "brp_small.pm": [0.1,0.01,0.005],
+    "zero_conf_small.pm": [0.9,0.75,0.52,0.45],
+    "zero_conf_medium.pm": [0.9,0.75,0.52,0.45],
+    "zero_conf_gigantic_2.pm": [0.9,0.75,0.52,0.45],
+    "chain_small.pm": [0.9,0.4,0.354,0.3],
+    "chain_medium.pm": [0.9,0.4,0.354,0.3],
+    "chain_gigantic.pm": [0.9,0.4,0.354,0.3],
+    "double_chain_small.pm": [0.9,0.3,0.2164],
+    "double_chain_medium.pm": [0.94,0.3,0.24],
+    "double_chain_gigantic.pm": [0.94,0.3,0.24],
+    "haddad_monmege_small.pm": [0.9,0.75],
+    "haddad_monmege_medium.pm": [0.9,0.75],
+    "haddad_monmege_gigantic.pm": [0.9,0.75],
+    "grid_small.pm": [0.3,0.2],
+    "grid_medium.pm": [0.3,0.2],
+    "grid_gigantic.pm": [0.3,0.2]
+}
