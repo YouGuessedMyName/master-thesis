@@ -18,7 +18,7 @@ used_heur = Cs
 gens = []
 used_gen = exponential_generalization
 
-testAdjointPDRdown(M, heurs, used_heur, gens, used_gen, propagate_=False, print_=False, assert_=True, loop_check=True)
+testAdjointPDRdown(M, heurs, used_heur, gens, used_gen, propagate_=False, print_=True, assert_=True, loop_check=True)
 
 
 # ctx = isl.Context()
