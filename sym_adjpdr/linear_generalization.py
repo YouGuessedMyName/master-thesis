@@ -5,7 +5,7 @@ from sym_adjpdr.model import *
 oracle = None # Is set externally to the value of the heuristc...
 
 def linear_generalization(F: Frame, s: isl.Point, M: Model) -> tuple[Fraction, Frame]:
-    delta = oracle.pw.eval(s)
+    delta = eval_safe(oracle.pw,s)
     z = Frame.ones(isl.DEFAULT_CONTEXT, F.variables)
     # print(f"Generalizing state: {s}, with delta: {delta}")
     for i, (xi, (_, u_xi)) in enumerate(F.variables.items()):
@@ -57,7 +57,7 @@ def linear_generalize_variable(F: Frame, s: isl.Point, delta: isl.Val, i: int, x
     s_xi = s.get_coordinate_val(isl.dim_type.set, i)
     s_x_i_to_u_xi = s.set_coordinate_val(isl.dim_type.set, i, isl.Val(u_xi))
     Phi2_F = M.Phi(M.Phi(F))
-    m_xi = vtp(Phi2_F.pw.eval(s_x_i_to_u_xi))
+    m_xi = vtp(eval_safe(Phi2_F.pw, s_x_i_to_u_xi))
     theta = theta_domain(i, xi_isl, s_xi, s, M)
     
     e = interpolate(

@@ -1,9 +1,8 @@
 dtmc
 
 module spread
-    y : [0..2048] init 1024;
     x : [0..11] init 0;
-    
+    y : [0..2048] init 1024;
 
     [] x = 0 ->   	1/2: (x'=x+1) & (y'=y-512) + 1/2: (x'=x+1) & (y'=y+512);
     [] x = 1 ->   	1/2: (x'=x+1) & (y'=y-256) + 1/2: (x'=x+1) & (y'=y+256);
@@ -19,4 +18,4 @@ module spread
 endmodule
 
 
-label "bad" = x=11;
+label "goal" = x=11;

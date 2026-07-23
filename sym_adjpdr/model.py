@@ -46,9 +46,9 @@ def conjuncts_to_isl_set(vars: dict[str, tuple[int, int]], conjuncts: list[Expr]
     constraints = []
 
     # Add variable bounds first
-    for name, (lb, ub) in vars.items():
-        constraints.append(f"{lb} <= {name}")
-        constraints.append(f"{name} <= {ub}")
+    # for name, (lb, ub) in vars.items():
+    #     constraints.append(f"{lb} <= {name}")
+    #     constraints.append(f"{name} <= {ub}")
 
     # Add the conjunct expressions
     for c in conjuncts:
@@ -78,6 +78,11 @@ def to_indicator_function(s: isl.Set, domain: isl.Set, constant_val: int = 1) ->
     zeroes = isl.PwAff.zero_on_domain(s.space)
     res = restricted_one.union_add(zeroes).intersect_domain(domain)
     return res.coalesce()
+
+def to_indicator_function_no_domain(s: isl.Set) -> isl.PwAff:
+    s_piece = isl.Aff.val_on_domain_space(s.get_space(), isl.Val(1)).intersect_domain(s)
+    zero_piece = isl.PwAff.from_aff(isl.Aff.zero_on_domain_space(s.get_space()))
+    return zero_piece.union_max(s_piece)
 
 class Model:
     # For now support only DTMC
@@ -142,7 +147,8 @@ class Model:
             for p, updates in command.branches:
                 assert len(updates) == len(self.vars)
                 update_strs = []
-                for update in updates:
+                for v, update in zip(self.vars, updates):
+                    assert v == update.variable.name, "Wrong order of updates."
                     update_strs.append(expr_to_isl_string(update.new_val))
                 update_str = ",".join(update_strs)
                 final_map_str = "{ [" + ",".join(self.vars) + "] -> [" + update_str + "] }" 
@@ -187,7 +193,7 @@ class Model:
         module: Module = PrismTransformer().transform(tree)
         module.set_property(bad_label=bad_label)
         if set_expected_result:
-            module.set_expected_result(path)
+            module.set_expected_result(path, bad_label=bad_label)
         module.clear_constants()
         return Model(ctx, module, max_prob, no_generalization_partitions, module.init)
     
@@ -196,7 +202,7 @@ class Model:
         # print("space", F.pw.domain().get_space())
         # We do it slightly differently than described in the thesis for efficiency reasons.
         # We first take the sum of all updates that belong to phi, and only then intersect it with phi!
-        phi_F = to_indicator_function(self.bad, F.domain)
+        phi_F = to_indicator_function_no_domain(self.bad)
         # print("phi_F", phi_F)
         for phi_set, isl_branch in self.isl_commands_phi:
             phi_i = isl.PwAff.zero_on_domain(F.domain.space)
@@ -211,7 +217,8 @@ class Model:
             # print("guarded", guarded_phi_i)
             phi_F = phi_F.union_add(guarded_phi_i).coalesce()
         # print('PHI F', phi_F)
-        return Frame(phi_F.intersect_domain(F.domain).coalesce(), F.domain, F.variables, F.factor)
+        res = phi_F.intersect_domain(phi_F.non_zero_set()).coalesce()
+        return Frame(res, F.domain, F.variables, F.factor)
     
     def Chi(self, F: Frame) -> Frame:
         one = self.Phi(F)
@@ -229,7 +236,7 @@ class Model:
     def Theta(self, F: Frame) -> Frame:
         theta_F = isl.PwAff.zero_on_domain(F.domain.space)
         for phi_set, isl_branch in self.isl_commands_theta:
-            phi = to_indicator_function(phi_set, F.domain)
+            phi = to_indicator_function_no_domain(phi_set)
             for p_ij, is_constant, u in isl_branch:
                 if is_constant:
                     sat_phi = Frame(F.pw * phi, F.domain, F.variables).sum()
@@ -237,9 +244,11 @@ class Model:
                     theta_ij = sat_phi_aff * u # In this case, u returns 1 on s' and 0 on all other states.
                     theta_F = theta_F.union_add(p_ij * theta_ij)
                 else: # In this case, u is the reverted update.
-                    update_ij = p_ij * (phi.pullback_pw_multi_aff(u) * F.pw.pullback_pw_multi_aff(u))
+                    phi_i_j = phi.pullback_pw_multi_aff(u)
+                    F_i_j = F.pw.pullback_pw_multi_aff(u)
+                    update_ij = (p_ij * (phi_i_j * F_i_j)).coalesce()
                     theta_F = theta_F.union_add(update_ij)
-        res = theta_F.intersect_domain(F.domain).coalesce()
+        res = theta_F.intersect_domain(theta_F.non_zero_set()).coalesce()
         return Frame(res, F.domain, F.variables, F.factor)
 
     def __PsiEq(self, W: Frame, r: Fraction) -> tuple[Frame, Fraction]:

@@ -2,10 +2,25 @@ from sym_adjpdr.frames import *
 from sym_adjpdr.model import *
 from sym_adjpdr.generalization import iterate_isl_set
 import z3
+import islpy as isl
 
+def point_from_dict(space: isl.Space, values: dict[str, int]) -> isl.Point:
+    """Create an isl.Point in `space` from a mapping of variable names to values."""
+    pt = isl.Point.zero(space)
+    var_dict = pt.get_var_dict()
+
+    for name, value in values.items():
+        dim_type, pos = var_dict[name]
+        pt = pt.set_coordinate_val(dim_type, pos, isl.Val.int_from_si(space.get_ctx(), value))
+
+    return pt
 def Ca(M: Model) -> FrameSet:
-    F = Frame.zeroes(M.ctx, M.vars)
-    F[M.init] = 1
+    # F = Frame.zeroes(M.ctx, M.vars)
+    init_isl_set = isl.Set.from_point(point_from_dict(M.domain.get_space(), M.init))
+
+    F = Frame.from_pieces(isl.DEFAULT_CONTEXT, M.vars, 
+        [(init_isl_set, Fraction(1))])
+
     G = FrameSet([(F,M.max_prob)], M.vars)
     # print(F)
     # print(G)
@@ -88,7 +103,7 @@ def compute_meet(min: Frame, w: Frame, r_: Fraction, coeffs: list[isl.Point], s:
     
     return Z
 
-def __CbGenCommon(F: Frame, G: FrameSet, M: Model) -> Frame:
+def Cb(F: Frame, G: FrameSet, M: Model) -> Frame:
     assert len(G.eqs) == 1
     w, r = G.eqs[0][0], G.eqs[0][1]
     coeffs = list(iterate_isl_set(w.pw.non_zero_set()))
@@ -102,17 +117,19 @@ def __CbGenCommon(F: Frame, G: FrameSet, M: Model) -> Frame:
     res = Frame.from_pieces(isl.DEFAULT_CONTEXT, F.variables, 
         [(isl.Set.from_point(s), meetZk.eval(s)) for i,s in enumerate(coeffs)], default_val=1)
 
-    return res
+    w_zero_set = isl.Set.universe(res.domain.get_space())
 
-def Cb(F: Frame, G: FrameSet, M: Model) -> Frame:
-    w, _r = G.eqs[0]
-    res = __CbGenCommon(F,G,M)
-    return disjoint_union(res, w.pw.non_zero_set(), M.Phi(F), w.pw.zero_set())
+    return disjoint_union(res, w.pw.non_zero_set(), M.Phi(F), w_zero_set)
 
-def CbGenChi(F: Frame, G: FrameSet, M: Model) -> Frame:
-    w, _r = G.eqs[0]
-    res = __CbGenCommon(F,G,M)
-    zeroes = w.pw.zero_set()
-    nz = w.pw.non_zero_set()
-    final_res = disjoint_union(res, w.pw.non_zero_set(), M.Chi(F), w.pw.zero_set())
-    return final_res
+# def Cb(F: Frame, G: FrameSet, M: Model) -> Frame:
+#     w, _r = G.eqs[0]
+#     res = __CbGenCommon(F,G,M)
+#     return disjoint_union(res, w.pw.non_zero_set(), M.Phi(F), w.pw.zero_set())
+
+# def CbGenChi(F: Frame, G: FrameSet, M: Model) -> Frame:
+#     w, _r = G.eqs[0]
+#     res = __CbGenCommon(F,G,M)
+#     zeroes = w.pw.zero_set()
+#     nz = w.pw.non_zero_set()
+#     final_res = disjoint_union(res, w.pw.non_zero_set(), M.Chi(F), w.pw.zero_set())
+#     return final_res

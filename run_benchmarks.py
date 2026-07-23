@@ -11,7 +11,7 @@ import time
 import json
 
 BENCHMARKS = "benchmarks_included"
-TIMEOUT = 240  # seconds
+TIMEOUT = 10#240  # seconds
 
 NO_GEN_PARTITIONS = 100
 PROPAGATE = False

@@ -1,5 +1,5 @@
 import islpy as isl
-from sym_adjpdr.frames import Vars, frac_to_isl
+from sym_adjpdr.frames import Vars, frac_to_isl,eval_safe
 import math
 from fractions import Fraction
 
@@ -108,8 +108,8 @@ def pwqp_to_pwaff_overapproximation(pw: isl.PwQPolynomial, partitions_list: list
         x1, x2 = bounds[variable_index][0], bounds[variable_index][1]
         p1 = isl.Point.zero(space).set_coordinate_val(isl.dim_type.set, variable_index, isl.Val(x1))
         p2 = isl.Point.zero(space).set_coordinate_val(isl.dim_type.set, variable_index, isl.Val(x2))
-        y1 = pw.eval(p1)
-        y2 = pw.eval(p2)
+        y1 = eval_safe(pw, p1)
+        y2 = eval_safe(pw, p2)
 
         aff = interpolate(x1, vtp(y1), x2, vtp(y2), x_isl, space)
         if res_pwaff is None:

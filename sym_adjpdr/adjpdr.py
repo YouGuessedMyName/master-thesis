@@ -76,9 +76,10 @@ def adjointPDRdown(M: Model, do_propagate: bool, heuristics, used_heuristic, gen
             G = [ZZ]
             print("\tZZ", ZZ) if print_ else None
             if assert_:
-                if F[n-1] in ZZ:
-                    F[n-1] in ZZ
+                # print(F[n-1] <= M.prop)
                 assert F[n-1] not in ZZ
+                # print("Prop", M.prop)
+                # print("ZZ", ZZ)
                 assert M.prop in ZZ
         
         # DECIDE

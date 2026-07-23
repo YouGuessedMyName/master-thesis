@@ -5,7 +5,6 @@ from fractions import Fraction
 from typing import Iterator
 import islpy as isl
 from itertools import product
-from sym_adjpdr.barvinok_bindings import *
 import re
 from sym_adjpdr.islpy_to_sympy import vtp
 
@@ -18,6 +17,10 @@ VERBOSE = "VERBOSE"
 VECTOR = "VECTOR"
 FLOAT_VECTOR = "FLOAT_VECTOR"
 FRAME_PRINTING = ABSTRACT
+
+def eval_safe(pw: isl.PwAff, s: isl.Point) -> isl.Val:
+    res = pw.eval(s)
+    return isl.Val("0") if res.is_nan() else res
 
 # ---------- Helpers ----------
 
@@ -92,7 +95,7 @@ class Frame:
     def from_pieces(ctx: isl.Context, variables: Vars, pieces: Iterator[tuple[isl.Set, Fraction | isl.Val | isl.Aff]], 
                     factor: int = 1, default_val: Fraction | isl.Val = Fraction(0)):
         domain = make_domain(ctx, variables)
-
+        space = domain.get_space()
         used = isl.Set.empty(domain.get_space())
         pw = None
 
@@ -100,13 +103,12 @@ class Frame:
             region_space = region.get_space()
             used_space = used.get_space()
             domain_space = domain.get_space()
-            clean = region.subtract(used).intersect(domain) 
+            clean = region.subtract(used)
             # Clean represents the region that was not taken yet by any other region, to ensure no overlap between regions.
             if clean.is_empty():
                 continue
 
             used = used.union(clean)
-            space = clean.get_space()
 
             if type(val) == Fraction:
                 aff = isl.Aff.zero_on_domain(space)
@@ -121,20 +123,35 @@ class Frame:
             pw_piece = aff.intersect_domain(clean)
             pw = pw_piece if pw is None else pw.union_max(pw_piece)
 
-        # fill remaining domain with 0
-        remaining = domain.subtract(used)
-        if not remaining.is_empty():
-            space = remaining.get_space()
-            if type(default_val) == Fraction:
-                isl_default_val = isl.Val(frac_to_isl(default_val))
+        if type(default_val) == Fraction:
+            isl_default_val = isl.Val(frac_to_isl(default_val))
+        else:
+            isl_default_val = default_val
+
+        # fill remaining domain with default_val
+        if isl_default_val == isl.Val("0"):
+            pass # Only store non-zero values!
+            zeroes = isl.Aff.zero_on_domain(space)
+            if pw is None:
+                pw = zeroes
+            # else:
+            #     pw = pw.union_max(zeroes)
+        elif isl_default_val == isl.Val("1"):
+            ones = isl.Aff.val_on_domain_space(space, isl_default_val)
+            if pw is None:
+                pw = ones
             else:
-                isl_default_val = default_val
+                pw = ones.union_min(pw)
+        else:
+            remaining = domain.subtract(used).coalesce()
+            space = remaining.get_space()
+            
             aff = isl.Aff.val_on_domain(space, isl_default_val)
             pw_piece = isl.PwAff.from_aff(aff).intersect_domain(remaining)
             
             pw = pw_piece if pw is None else pw.union_max(pw_piece)
 
-        return Frame(pw.intersect_domain(domain), domain, variables, factor)
+        return Frame(pw, domain, variables, factor)
     
     @staticmethod
     def from_vector(ctx: isl.Context, variable: str, l: list[Fraction | int]):
@@ -143,7 +160,8 @@ class Frame:
 
     @staticmethod
     def zeroes(ctx: isl.Context, variables: Vars, factor: int = 1):
-        return Frame.from_pieces(ctx, variables, [], factor)
+        res = Frame.from_pieces(ctx, variables, [], factor)
+        return res
     
     @staticmethod
     def ones(ctx: isl.Context, variables: Vars):
@@ -153,25 +171,6 @@ class Frame:
     def empty(ctx: isl.Context, variables: Vars):
         return Frame(None, make_domain(ctx, variables), variables, 1, True)
     
-    def better_coalesce(self) -> "Frame":
-        """Coalesce all the sets that make up the pwaff and have the same value. Unfortunately islpy does not do this by default :(."""
-        values = {}
-        for sset, aff in self.pw.get_pieces():
-            try:
-                val = aff.get_constant_val()
-            except:
-                return
-            if val not in values:
-                values[val] = sset
-            else:
-                values[val] = values[val].union_add(sset).coalesce()
-        print(values)
-        F = Frame.from_pieces(isl.DEFAULT_CONTEXT, self.variables, [(sset, val) for val,sset in values.items()])
-        print("F\t", F)
-        print()
-        return F
-
-
     # ---------- evaluation ----------
     def eval(self, s: State | isl.Point) -> Fraction:
         ctx = self.domain.get_ctx()
@@ -184,10 +183,11 @@ class Frame:
                 point = point.set_coordinate_val(
                     isl.dim_type.set, i, isl.Val.int_from_si(ctx, s[v])
                 )
-
-        val = self.pw.eval(point)
+        val = eval_safe(self.pw, point)
         if val.is_int():
             return Fraction(val.to_python() / self.factor)
+        elif val.is_nan():
+            return Fraction(0,1)
         else:
             return (Fraction(val.to_str()) / self.factor)
 
@@ -197,15 +197,18 @@ class Frame:
             return True
         if other.is_empty:
             return self.is_empty
-        return self.pw.le_set(other.pw).is_equal(self.domain)
-
-    def le_on_domain(self, other: "Frame", domain: isl.Set) -> bool:
-        return self.pw.intersect_domain(domain).le_set(other.pw).is_equal(domain)
+        nz = self.pw.non_zero_set().intersect(self.domain)
+        le_set = self.pw.le_set(other.pw).intersect(nz)
+        return le_set.is_equal(nz)
     
     def __lt__(self, other: "Frame") -> bool:
         if self.is_empty:
             return True
-        return self.pw.lt_set(other.pw).is_equal(self.domain)
+        if other.is_empty:
+            return self.is_empty
+        nz = self.pw.non_zero_set().intersect(self.domain)
+        le_set = self.pw.lt_set(other.pw).intersect(nz)
+        return le_set.is_equal(nz)
 
     def le_slow(self, other: "Frame") -> bool:
         for s in enumerate_states(self.variables):
@@ -373,55 +376,3 @@ class FrameSet:
         for row, r in self.eqs:
             res += str(row) + " * v <= " + str(r) + "; "
         return res + "}"
-
-    # ---------- subset inclusion ----------
-    # def __le__(self, other: "FrameSet") -> bool:
-    #     # build region partition
-    #     regions = []
-    #     for (r, _) in self.eqs:
-    #         for (R, _) in r.pw.get_pieces():
-    #             regions.append(R)
-
-    #     # counts
-    #     counts = [r.count_val().to_python() for r in regions]
-
-    #     n = len(regions)
-
-    #     for (q, q0) in other.eqs:
-    #         c = []
-    #         for R in regions:
-    #             val = 0
-    #             for (Qreg, qv) in q.pw.get_pieces():
-    #                 if not R.intersect(Qreg).is_empty():
-    #                     val = qv.get_constant_val().to_python()
-    #                     break
-    #             c.append(val)
-
-    #         A = []
-    #         b = []
-    #         for (r, r0) in self.eqs:
-    #             row = []
-    #             for R in regions:
-    #                 val = 0
-    #                 for (Rr, rv) in r.pw.get_pieces():
-    #                     if not R.intersect(Rr).is_empty():
-    #                         val = rv.get_constant_val().to_python()
-    #                         break
-    #                 row.append(val)
-    #             A.append(row)
-    #             b.append(float(r0))
-
-    #         bounds = [(0, 1)] * n
-
-    #         res = linprog(
-    #             c=[-ci for ci in c],
-    #             A_ub=A,
-    #             b_ub=b,
-    #             bounds=bounds,
-    #             method="highs"
-    #         )
-
-    #         if res.success and -res.fun > float(q0):
-    #             return False
-
-    #     return True

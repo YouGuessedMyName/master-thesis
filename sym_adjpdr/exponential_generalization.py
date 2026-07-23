@@ -98,7 +98,7 @@ def exponential_generalize_variable(F: Frame, s: isl.Point, i: int, x_i: str, u_
     if a.has(nan,zoo,I) or b.has(nan,zoo,I) or a < 0: # success?
         return False, Frame.ones(isl.DEFAULT_CONTEXT, F.variables)
 
-
+    # print(f"{c} * {a}**(x-{d}) + {b}")
     # assert eval_exponential(a,b,c,d,u_xi) == y0
     # assert eval_exponential(a,b,c,d,u_xi-1) == y1
     # assert eval_exponential(a,b,c,d,u_xi-2) == y2

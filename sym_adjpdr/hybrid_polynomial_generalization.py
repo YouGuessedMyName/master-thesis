@@ -14,7 +14,7 @@ def hybrid_polynomial_generalization(F: Frame, p: isl.Point, delta: isl.Val, M: 
         PARTITIONS = find_partitions_list(M.vars)
         [print(p) for p in PARTITIONS]
     # Do polynomial generalization. Outputs a simpy piecewise.
-    assert M.Phi(F).pw.eval(p) <= delta
+    assert eval_safe(M.Phi(F), p) <= delta
 
     sym_vars = [sp.Symbol(x) for x in M.vars]
     z3_vars = [z3.Int(x) for x in M.vars]
@@ -54,7 +54,7 @@ def hybrid_polynomial_generalization(F: Frame, p: isl.Point, delta: isl.Val, M: 
 
         sigma_subst = p.set_coordinate_val(isl.dim_type.set, k, isl.Val(ub))
         
-        Phi_F_eval = vtp(Phi_F.pw.eval(sigma_subst))
+        Phi_F_eval = vtp(eval_safe(Phi_F.pw, sigma_subst))
         points = [(vtp(cur_val), vtp(delta)), (ub, Phi_F_eval)]
 
         i = 0
