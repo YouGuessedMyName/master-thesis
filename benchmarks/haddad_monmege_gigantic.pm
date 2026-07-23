@@ -3,16 +3,20 @@ dtmc
 const int N=500000000;
 
 module main
-    start : bool init true;
-    side : bool init false;
+    start : [0..1] init 1;
+    side : [0..1] init 0;
 	x : [0..N] init 0;
 
-	[] start = true ->  0.7 : (start'=false)&(side'=false) + 0.3 : (start'=false)&(side'=true);
-	[] start = false & side = false & x < N -> 0.51 : (x'=x+1) + 0.49 : (start'=true)&(side'=false)&(x'=0);
-	[] start = false & side = true & x < N -> 0.5 : (x'=x+1) + 0.5 : (start'=true)&(side'=false)&(x'=0);
+	[] start = 1 & side = 0 -> 7/10 : (start'=start-1)&(side'=side)&(x'=x) + 3/10 : (start'=start-1)&(side'=side+1)&(x'=x);
+	[] start = 1 & side = 1 -> 7/10 : (start'=start-1)&(side'=side-1)&(x'=x) + 3/10 : (start'=start-1)&(side'=side)&(x'=x);
+
+	[] start = 0 & side = 0 & x < N -> 51/100 : (start'=start)&(side'=side)&(x'=x+1) 
+		+ 49/100 : (start'=1)&(side'=0)&(x'=0);
+	
+	[] start = 0 & side = 1 & x < N -> 1/2 : (start'=start)&(side'=side)&(x'=x+1) 
+		+ 1/2 : (start'=1)&(side'=0)&(x'=0);
 
 
 endmodule
 
-label "goal" = x=N&side=false;
-
+label "goal" = x=N & side=0;

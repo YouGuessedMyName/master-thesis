@@ -45,7 +45,7 @@ def __CmGenCommon(F: Frame, G: FrameSet, M: Model) -> Frame:
         [(isl.Set.from_point(s), sol[i]) for i,s in enumerate(w_non_zero)], default_val=Fraction(1))
     return res
 
-def CmGen(F: Frame, G: FrameSet, M: Model) -> Frame:
+def Cm(F: Frame, G: FrameSet, M: Model) -> Frame:
     w, _r = G.eqs[0]
     res = __CmGenCommon(F,G,M)
     return disjoint_union(res, w.pw.non_zero_set(), M.Phi(F), w.pw.zero_set())
@@ -104,7 +104,7 @@ def __CbGenCommon(F: Frame, G: FrameSet, M: Model) -> Frame:
 
     return res
 
-def CbGen(F: Frame, G: FrameSet, M: Model) -> Frame:
+def Cb(F: Frame, G: FrameSet, M: Model) -> Frame:
     w, _r = G.eqs[0]
     res = __CbGenCommon(F,G,M)
     return disjoint_union(res, w.pw.non_zero_set(), M.Phi(F), w.pw.zero_set())

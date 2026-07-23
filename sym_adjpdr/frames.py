@@ -97,6 +97,9 @@ class Frame:
         pw = None
 
         for region, val in pieces:
+            region_space = region.get_space()
+            used_space = used.get_space()
+            domain_space = domain.get_space()
             clean = region.subtract(used).intersect(domain) 
             # Clean represents the region that was not taken yet by any other region, to ensure no overlap between regions.
             if clean.is_empty():

@@ -1,17 +1,19 @@
 dtmc
 
-const num_probes = 10000;
+const int num_probes = 10000;
 
 module zero_conf
 
-	start : bool init true;
-	established_ip: bool init false;
-	cur_probe : [0..num_probes] init 0;
+	start : [0..1] init 1; // z
+	established_ip: [0..1] init 0; // y
+	cur_probe : [0..num_probes] init 0; // x
 
-	[] (start = true & established_ip = false) -> (0.5): (start'=false) + (0.5) : (start'=false)&(established_ip'=true);
-	[] (start = false & established_ip = false & cur_probe < num_probes) -> (0.999999999):(cur_probe'=cur_probe + 1) + (1-0.999999999):(start'=true)&(cur_probe'=0);
+	[] start = 1 & established_ip = 0 -> 1/2: (start'=start-1)&(established_ip'=established_ip)&(cur_probe'=cur_probe) 
+			+ 1/2 : (start'=start-1)&(established_ip'=established_ip+1)&(cur_probe'=cur_probe);
+
+	[] start = 0 & established_ip = 0 & cur_probe < num_probes -> 999999999/1000000000: (start'=start)&(established_ip'=established_ip)&(cur_probe'=cur_probe + 1) 
+			+ 1/1000000000:(start'=1)&(established_ip'=0)&(cur_probe'=0);
 
 endmodule
 
-label "goal" = established_ip=true;
-
+label "goal" = established_ip=1;

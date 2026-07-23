@@ -13,8 +13,6 @@ from lark import Lark, Transformer
 with open("sym_adjpdr/grammar.ebnf", "r") as f:
     GRAMMAR = f.read()
 
-prism_parser = Lark(GRAMMAR, start="start")
-
 # === AST structures ===
 @dataclass
 class Update:
@@ -118,8 +116,13 @@ class Module:
 
 # === Transformer ===
 class PrismTransformer(Transformer):
-    denominators: list[int] = []
-    inits: dict[str, int] = {}
+    denominators: list[int]
+    inits: dict[str, int]
+
+    def __init__(self):
+        super().__init__()
+        self.denominators = []
+        self.inits = {}
 
     def start(self, items):
         _model_type, constants, module, labels = items

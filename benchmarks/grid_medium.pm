@@ -1,14 +1,14 @@
 dtmc
 
-const N = 100;
-const M = 100;
+const int N = 100;
+const int M = 100;
 
 module grid
 
 	a : [0..N] init 0;
 	b : [0..M] init 0;
 
-	[] (a < N & b < M) -> (0.55): (a'=a+1) + (0.45) : (b'=b+1);
+	[] a < N & b < M -> 55/100: (a'=a+1)&(b'=b) + 45/100 : (a'=a)&(b'=b+1);
 
 endmodule
 

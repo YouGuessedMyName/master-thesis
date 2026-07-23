@@ -1,17 +1,32 @@
 dtmc
 
-const N = 2500;
+const int N = 2500;
 
 module grid
 
 	c : [0..N] init 0;
-	f : bool init false;
-	g : bool init false;
+	f : [0..1] init 0;
+	g : [0..1] init 0;
 
-	[] (c < N & f = false) -> (0.1): (f'=true) + (0.0001): (g'=true) + 0.8999: (c'=c+1);
-	[] (c < N & f = true) -> (0.0001): (g'=true) + 0.9999: (c'=c+1);
+	[] c < N & f = 0 & g = 0 -> 
+	           1/10: (c'=c)&(f'=f+1)&(g'=g) 
+		+   1/10000: (c'=c)&(f'=f)&(g'=g+1) 
+		+   8999/10000: (c'=c+1)&(f'=f)&(g'=g);
+	
+	[] c < N & f = 0 & g = 1 -> 
+	           1/10: (c'=c)&(f'=f+1)&(g'=g) 
+		+   1/10000: (c'=c)&(f'=f)&(g'=g) 
+		+   8999/10000: (c'=c+1)&(f'=f)&(g'=g);
+
+	[] c < N & f = 1 & g=0 -> 
+		  1/1000: (c'=c)&(f'=f)&(g'=g+1) 
+		+ 999/1000: (c'=c+1)&(f'=f)&(g'=g);
+
+	[] c < N & f = 1 & g=1 -> 
+		  1/1000: (c'=c)&(f'=f)&(g'=g) 
+		+ 999/1000: (c'=c+1)&(f'=f)&(g'=g);
 
 endmodule
 
 
-label "goal" = g=true;
+label "goal" = g=1;

@@ -1,16 +1,44 @@
-False 0 benchmarks/b1.pm 0.1 Cs None 0.027
-False 1 benchmarks/b1.pm 0.1 Cs linear_generalization 0.048
-False 2 benchmarks/b1.pm 0.1 Cs binary_generalization 0.095
-False 3 benchmarks/b1.pm 0.1 Cs exponential_generalization 0.054
-False 4 benchmarks/b1.pm 0.1 CbGen None 0.039
-False 5 benchmarks/b1.pm 0.1 CbGen linear_generalization 0.072
-False 6 benchmarks/b1.pm 0.1 CbGen binary_generalization 0.115
-False 7 benchmarks/b1.pm 0.1 CbGen exponential_generalization 0.059
-True 8 benchmarks/b2.pm 0.8 Cs None 0.046
-True 9 benchmarks/b2.pm 0.8 Cs linear_generalization 0.255
-True 10 benchmarks/b2.pm 0.8 Cs binary_generalization 1.280
-True 11 benchmarks/b2.pm 0.8 Cs exponential_generalization 0.031
-True 12 benchmarks/b2.pm 0.8 CbGen None 0.043
-True 13 benchmarks/b2.pm 0.8 CbGen linear_generalization 0.024
-True 14 benchmarks/b2.pm 0.8 CbGen binary_generalization 0.575
-True 15 benchmarks/b2.pm 0.8 CbGen exponential_generalization 0.029
+0 benchmarks_included/brp_small.pm 0.1 Cs None T/O
+1 benchmarks_included/brp_small.pm 0.1 Cs linear_generalization T/O
+2 benchmarks_included/brp_small.pm 0.1 Cs binary_generalization T/O
+3 benchmarks_included/brp_small.pm 0.1 Cs exponential_generalization T/O
+4 benchmarks_included/brp_small.pm 0.1 CbGen None T/O
+5 benchmarks_included/brp_small.pm 0.1 CbGen linear_generalization T/O
+6 benchmarks_included/brp_small.pm 0.1 CbGen binary_generalization T/O
+7 benchmarks_included/brp_small.pm 0.1 CbGen exponential_generalization T/O
+8 benchmarks_included/brp_small.pm 0.01 Cs None T/O
+9 benchmarks_included/brp_small.pm 0.01 Cs linear_generalization T/O
+10 benchmarks_included/brp_small.pm 0.01 Cs binary_generalization T/O
+11 benchmarks_included/brp_small.pm 0.01 Cs exponential_generalization T/O
+12 benchmarks_included/brp_small.pm 0.01 CbGen None T/O
+13 benchmarks_included/brp_small.pm 0.01 CbGen linear_generalization T/O
+14 benchmarks_included/brp_small.pm 0.01 CbGen binary_generalization T/O
+15 benchmarks_included/brp_small.pm 0.01 CbGen exponential_generalization T/O
+16 benchmarks_included/brp_small.pm 0.005 Cs None T/O
+17 benchmarks_included/brp_small.pm 0.005 Cs linear_generalization T/O
+18 benchmarks_included/brp_small.pm 0.005 Cs binary_generalization T/O
+19 benchmarks_included/brp_small.pm 0.005 Cs exponential_generalization T/O
+20 benchmarks_included/brp_small.pm 0.005 CbGen None T/O
+21 benchmarks_included/brp_small.pm 0.005 CbGen linear_generalization T/O
+22 benchmarks_included/brp_small.pm 0.005 CbGen binary_generalization T/O
+23 benchmarks_included/brp_small.pm 0.005 CbGen exponential_generalization T/O
+CRASH LOADING benchmarks_included/chain_gigantic.pm 9/10
+CRASH LOADING benchmarks_included/chain_gigantic.pm 2/5
+CRASH LOADING benchmarks_included/chain_gigantic.pm 177/500
+CRASH LOADING benchmarks_included/chain_gigantic.pm 3/10
+CRASH LOADING benchmarks_included/chain_medium.pm 9/10
+CRASH LOADING benchmarks_included/chain_medium.pm 2/5
+CRASH LOADING benchmarks_included/chain_medium.pm 177/500
+CRASH LOADING benchmarks_included/chain_medium.pm 3/10
+CRASH LOADING benchmarks_included/double_chain_small.pm 9/10
+CRASH LOADING benchmarks_included/double_chain_small.pm 3/10
+CRASH LOADING benchmarks_included/double_chain_small.pm 95/439
+CRASH LOADING benchmarks_included/grid_small.pm 3/10
+CRASH LOADING benchmarks_included/grid_small.pm 1/5
+CRASH LOADING benchmarks_included/haddad_monmege_small.pm 9/10
+CRASH LOADING benchmarks_included/haddad_monmege_small.pm 3/4
+CRASH LOADING benchmarks_included/zero_conf_small.pm 9/10
+CRASH LOADING benchmarks_included/zero_conf_small.pm 3/4
+CRASH LOADING benchmarks_included/zero_conf_small.pm 13/25
+CRASH LOADING benchmarks_included/zero_conf_small.pm 9/20
+Done.

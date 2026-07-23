@@ -124,7 +124,7 @@ class Model:
         self.no_generalize_partitions =  no_generalize_partitions
         self.module = module
 
-        self.ctx = isl.Context()
+        self.ctx = ctx
 
         #self.bad_frame = Frame.from_pieces(self.ctx, self.vars, [(self.bad, Fraction(1))])
         if initial_state is None:
@@ -182,6 +182,7 @@ class Model:
     def from_prism_file(ctx: isl.Context, path: str, max_prob: Fraction, set_expected_result: bool = True, no_generalization_partitions: int = 1e4, bad_label: str = "bad"):
         with open(path, "r") as f:
             prism_str = f.read()
+        prism_parser = Lark(GRAMMAR, start="start")
         tree = prism_parser.parse(prism_str)
         module: Module = PrismTransformer().transform(tree)
         module.set_property(bad_label=bad_label)
