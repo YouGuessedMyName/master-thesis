@@ -142,7 +142,8 @@ class Model:
             for p, updates in command.branches:
                 assert len(updates) == len(self.vars)
                 update_strs = []
-                for update in updates:
+                for v, update in zip(self.vars, updates):
+                    assert v == update.variable.name
                     update_strs.append(expr_to_isl_string(update.new_val))
                 update_str = ",".join(update_strs)
                 final_map_str = "{ [" + ",".join(self.vars) + "] -> [" + update_str + "] }" 
