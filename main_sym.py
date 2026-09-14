@@ -6,17 +6,17 @@ from sym_adjpdr.generalization import *
 from sym_adjpdr.exponential_generalization import *
 
 
-MAX_PROB = Fraction(9,10)
+MAX_PROB = Fraction(0.52)
 
 ctx = isl.Context()
 no_generalization_partitions = 100
-M = Model.from_prism_file(ctx, "benchmarks_included/brp_small.pm", MAX_PROB, False, no_generalization_partitions, bad_label="goal")
+M = Model.from_prism_file(ctx, "benchmarks_total/zero_conf_tiny.pm", MAX_PROB, False, no_generalization_partitions, bad_label="goal")
 
 heurs = []
-used_heur = Cs
+used_heur = Cb
 
 gens = []
-used_gen = exponential_generalization
+used_gen = None
 
 testAdjointPDRdown(M, heurs, used_heur, gens, used_gen, propagate_=False, print_=True, assert_=True, loop_check=True)
 

@@ -1,6 +1,6 @@
 dtmc
 
-const int num_probes = 1000000000;
+const int num_probes = 100;
 
 module zero_conf
 
@@ -17,4 +17,3 @@ module zero_conf
 endmodule
 
 label "goal" = established_ip=1;
-

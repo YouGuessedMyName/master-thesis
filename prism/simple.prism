@@ -1,7 +1,0 @@
-dtmc
-
-module grid
-    
-endmodule
-
-label "bad" = x = N-1;
